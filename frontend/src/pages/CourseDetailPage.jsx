@@ -4,7 +4,6 @@ import { useAuth } from "../components/AuthContext";
 import { 
   Play, 
   BookOpen, 
-  FileText, 
   Clock, 
   Users, 
   Star, 
@@ -16,13 +15,10 @@ import {
   Download,
   Eye,
   CheckCircle,
-  Circle,
   Video,
   File,
   Type,
   Calendar,
-  BarChart3,
-  Award,
   Share2,
   Bookmark,
   BookmarkPlus
@@ -380,13 +376,7 @@ export default function CourseDetailPage() {
                     <p className="text-xs text-gray-600">Toplam Süre</p>
                   </div>
                   
-                  <div className="text-center">
-                    <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-xl mx-auto mb-2">
-                      <FileText size={24} className="text-purple-600" />
-                    </div>
-                    <p className="text-sm font-medium text-gray-900">{course.quizzes?.length || 0}</p>
-                    <p className="text-xs text-gray-600">Sınav</p>
-                  </div>
+
                   
                   <div className="text-center">
                     <div className="flex items-center justify-center w-12 h-12 bg-orange-100 rounded-xl mx-auto mb-2">
@@ -419,9 +409,7 @@ export default function CourseDetailPage() {
                 <nav className="flex space-x-8 px-6">
                   {[
                     { id: "overview", label: "Genel Bakış", icon: BookOpen },
-                    { id: "contents", label: "Dersler", icon: Video },
-                    { id: "quizzes", label: "Sınavlar", icon: FileText },
-                    { id: "progress", label: "İlerleme", icon: BarChart3 }
+                    { id: "contents", label: "Dersler", icon: Video }
                   ].map((tab) => (
                     <button
                       key={tab.id}
@@ -726,126 +714,9 @@ export default function CourseDetailPage() {
                   </div>
                 )}
 
-                {/* Sınavlar Tab */}
-                {activeTab === "quizzes" && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900">Sınavlar</h3>
-                    </div>
 
-                    {(!course.quizzes || course.quizzes.length === 0) ? (
-                      <div className="text-center py-12">
-                        <FileText size={64} className="mx-auto text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Henüz sınav eklenmemiş</h3>
-                        <p className="text-gray-600">Bu kurs için henüz sınav eklenmemiş.</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {course.quizzes.map((quiz) => (
-                          <div key={quiz.id} className="bg-gray-50 rounded-xl p-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <h4 className="font-medium text-gray-900">{quiz.title}</h4>
-                                <p className="text-sm text-gray-600">{quiz.description}</p>
-                              </div>
-                              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                                Sınava Başla
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
 
-                {/* İlerleme Tab */}
-                {activeTab === "progress" && (
-                  <div className="space-y-6">
-                    <h3 className="text-lg font-semibold text-gray-900">İlerleme Raporu</h3>
-                    
-                    {user?.role === "Student" ? (
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="bg-blue-50 rounded-xl p-4">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <CheckCircle size={20} className="text-blue-600" />
-                              </div>
-                              <div>
-                                <p className="text-sm text-gray-600">Tamamlanan</p>
-                                <p className="text-xl font-bold text-gray-900">
-                                  {progress.completedLessons || 0}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="bg-green-50 rounded-xl p-4">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                <BarChart3 size={20} className="text-green-600" />
-                              </div>
-                              <div>
-                                <p className="text-sm text-gray-600">Başarı Oranı</p>
-                                <p className="text-xl font-bold text-gray-900">
-                                  {Math.round((progress.completedLessons || 0) / contents.length * 100)}%
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="bg-purple-50 rounded-xl p-4">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                                <Award size={20} className="text-purple-600" />
-                              </div>
-                              <div>
-                                <p className="text-sm text-gray-600">Ortalama Puan</p>
-                                <p className="text-xl font-bold text-gray-900">
-                                  {progress.averageScore || 0}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
 
-                        <div className="bg-white rounded-xl p-6 border border-gray-200">
-                          <h4 className="font-medium text-gray-900 mb-4">Ders İlerlemesi</h4>
-                          <div className="space-y-3">
-                            {contents.map((content, index) => (
-                              <div key={content.id} className="flex items-center space-x-3">
-                                <div className="flex-shrink-0">
-                                  {progress.completedLessons?.includes(content.id) ? (
-                                    <CheckCircle size={20} className="text-green-500" />
-                                  ) : (
-                                    <Circle size={20} className="text-gray-300" />
-                                  )}
-                                </div>
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-900">
-                                    {index + 1}. {content.title}
-                                  </p>
-                                </div>
-                                <div className="flex-shrink-0">
-                                  <span className="text-sm text-gray-600">
-                                    {progress.completedLessons?.includes(content.id) ? 'Tamamlandı' : 'Bekliyor'}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-center py-12">
-                        <BarChart3 size={64} className="mx-auto text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">İlerleme raporu</h3>
-                        <p className="text-gray-600">Bu bölüm sadece öğrenciler için görüntülenir.</p>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -905,49 +776,11 @@ export default function CourseDetailPage() {
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-3">
-                  <FileText size={20} className="text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Sınav Sayısı</p>
-                    <p className="text-sm text-gray-600">{course.quizzes?.length || 0} sınav</p>
-                  </div>
-                </div>
+
               </div>
             </div>
 
-            {/* İstatistikler */}
-            {user?.role === "Student" && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">İstatistikler</h3>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">Tamamlanma</span>
-                      <span className="text-sm text-gray-600">
-                        {Math.round((progress.completedLessons || 0) / contents.length * 100)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${(progress.completedLessons || 0) / contents.length * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-gray-900">{progress.completedLessons || 0}</p>
-                      <p className="text-xs text-gray-600">Tamamlanan</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-gray-900">{contents.length - (progress.completedLessons || 0)}</p>
-                      <p className="text-xs text-gray-600">Kalan</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+
           </div>
         </div>
       </div>
