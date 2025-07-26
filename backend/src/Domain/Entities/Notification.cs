@@ -3,7 +3,11 @@ namespace Domain.Entities;
 public enum NotificationType
 {
     SMS,
-    Push
+    Push,
+    Info,
+    Success,
+    Warning,
+    Error
 }
 
 public enum NotificationStatus

@@ -22,6 +22,18 @@ export default function NotificationsPage() {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [editingNotification, setEditingNotification] = useState(null);
+  const [newNotification, setNewNotification] = useState({
+    title: "",
+    message: "",
+    type: "info",
+    recipientType: "all",
+    scheduledDate: ""
+  });
 
   useEffect(() => {
     async function fetchNotifications() {
@@ -90,6 +102,138 @@ export default function NotificationsPage() {
     }
   };
 
+  const handleViewNotification = (notification) => {
+    setSelectedNotification(notification);
+    setShowDetailModal(true);
+  };
+
+  const handleEditNotification = (notification) => {
+    setEditingNotification({
+      id: notification.id,
+      title: notification.title || "",
+      message: notification.message || "",
+      type: notification.type || "info",
+      recipientType: notification.recipientType || "all",
+      scheduledDate: notification.scheduledDate || ""
+    });
+    setShowEditModal(true);
+  };
+
+  const handleDeleteNotification = async (notificationId) => {
+    if (!window.confirm("Bu bildirimi silmek istediğinizden emin misiniz?")) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const headers = {
+        "Authorization": `Bearer ${token}`
+      };
+
+      const res = await fetch(`http://192.168.1.78:5068/api/notifications/${notificationId}`, {
+        method: "DELETE",
+        headers
+      });
+
+      if (res.ok) {
+        setNotifications(notifications.filter(notification => notification.id !== notificationId));
+      } else {
+        const errorText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+    } catch (error) {
+      console.error("Bildirim silinirken hata:", error);
+    }
+  };
+
+  const handleAddNotification = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem("token");
+      const headers = {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      };
+
+      // Add a dummy UserId for "all" recipients, or get from user context
+      const notificationData = {
+        ...newNotification,
+        userId: "00000000-0000-0000-0000-000000000000" // Empty GUID for "all" recipients
+      };
+
+      const res = await fetch("http://192.168.1.78:5068/api/notifications", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(notificationData)
+      });
+
+      if (res.ok) {
+        const addedNotification = await res.json();
+        setNotifications([...notifications, addedNotification]);
+        setShowAddModal(false);
+        setNewNotification({
+          title: "",
+          message: "",
+          type: "info",
+          recipientType: "all",
+          scheduledDate: ""
+        });
+      } else {
+        const errorText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+    } catch (error) {
+      console.error("Bildirim eklenirken hata:", error);
+    }
+  };
+
+  const handleUpdateNotification = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem("token");
+      const headers = {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      };
+
+      const res = await fetch(`http://192.168.1.78:5068/api/notifications/${editingNotification.id}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(editingNotification)
+      });
+
+      if (res.ok) {
+        const updatedNotification = await res.json();
+        setNotifications(notifications.map(notification => 
+          notification.id === editingNotification.id ? updatedNotification : notification
+        ));
+        setShowEditModal(false);
+        setEditingNotification(null);
+      } else {
+        const errorText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+    } catch (error) {
+      console.error("Bildirim güncellenirken hata:", error);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewNotification(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleEditInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditingNotification(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-google-gray-50 font-inter">
@@ -112,7 +256,7 @@ export default function NotificationsPage() {
             </div>
             
             <button
-              onClick={() => {/* TODO: Add notification modal */}}
+              onClick={() => setShowAddModal(true)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-google-blue text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 shadow-sm"
             >
               <Plus size={20} />
@@ -184,13 +328,22 @@ export default function NotificationsPage() {
                   </div>
                   
                   <div className="flex gap-2">
-                    <button className="p-2 hover:bg-google-gray-100 rounded-lg transition-colors duration-200">
+                    <button
+                      onClick={() => handleViewNotification(notification)}
+                      className="p-2 hover:bg-google-gray-100 rounded-lg transition-colors duration-200"
+                    >
                       <Eye size={16} className="text-google-gray-600" />
                     </button>
-                    <button className="p-2 hover:bg-google-gray-100 rounded-lg transition-colors duration-200">
+                    <button
+                      onClick={() => handleEditNotification(notification)}
+                      className="p-2 hover:bg-google-gray-100 rounded-lg transition-colors duration-200"
+                    >
                       <Edit size={16} className="text-google-gray-600" />
                     </button>
-                    <button className="p-2 hover:bg-red-100 rounded-lg transition-colors duration-200">
+                    <button
+                      onClick={() => handleDeleteNotification(notification.id)}
+                      className="p-2 hover:bg-red-100 rounded-lg transition-colors duration-200"
+                    >
                       <Trash2 size={16} className="text-red-600" />
                     </button>
                   </div>
@@ -263,6 +416,332 @@ export default function NotificationsPage() {
           </div>
         )}
       </div>
+
+      {/* Add Notification Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-google-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-google-gray-900">Yeni Bildirim Ekle</h2>
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="text-google-gray-400 hover:text-google-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleAddNotification} className="p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                  Başlık *
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  value={newNotification.title}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                  placeholder="Bildirim başlığı"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                  Mesaj *
+                </label>
+                <textarea
+                  name="message"
+                  value={newNotification.message}
+                  onChange={handleInputChange}
+                  rows={4}
+                  className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                  placeholder="Bildirim mesajı"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                    Tür *
+                  </label>
+                  <select
+                    name="type"
+                    value={newNotification.type}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                  >
+                    <option value="info">Bilgi</option>
+                    <option value="success">Başarı</option>
+                    <option value="warning">Uyarı</option>
+                    <option value="error">Hata</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                    Alıcı Türü *
+                  </label>
+                  <select
+                    name="recipientType"
+                    value={newNotification.recipientType}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                  >
+                    <option value="all">Tüm Kullanıcılar</option>
+                    <option value="students">Öğrenciler</option>
+                    <option value="instructors">Eğitmenler</option>
+                    <option value="admins">Yöneticiler</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                  Zamanlanmış Tarih
+                </label>
+                <input
+                  type="datetime-local"
+                  name="scheduledDate"
+                  value={newNotification.scheduledDate}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                />
+              </div>
+
+              <div className="flex gap-4 pt-6 border-t border-google-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 px-4 py-2 border border-google-gray-300 text-google-gray-700 rounded-lg hover:bg-google-gray-50 transition-colors duration-200"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-google-blue text-white rounded-lg hover:bg-blue-600 transition-colors duration-200"
+                >
+                  Bildirim Ekle
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Detail Modal */}
+      {showDetailModal && selectedNotification && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-google-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-google-gray-900">Bildirim Detayları</h2>
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="text-google-gray-400 hover:text-google-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="flex items-center gap-4">
+                <div className={`w-16 h-16 ${getTypeBgColor(selectedNotification.type)} rounded-lg flex items-center justify-center`}>
+                  {getTypeIcon(selectedNotification.type)}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-google-gray-900">
+                    {selectedNotification.title || "İsimsiz Bildirim"}
+                  </h3>
+                  <p className="text-google-gray-600">{selectedNotification.recipientType || "Genel"}</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-1">Başlık</label>
+                  <p className="text-google-gray-900">{selectedNotification.title || "İsimsiz Bildirim"}</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-1">Mesaj</label>
+                  <p className="text-google-gray-900 bg-google-gray-50 p-3 rounded-lg">{selectedNotification.message || "Mesaj yok"}</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-1">Tür</label>
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(selectedNotification.type)}`}>
+                    {getTypeIcon(selectedNotification.type)}
+                    {selectedNotification.type === "info" ? "Bilgi" : 
+                     selectedNotification.type === "success" ? "Başarı" : 
+                     selectedNotification.type === "warning" ? "Uyarı" : 
+                     selectedNotification.type === "error" ? "Hata" : "Bilinmiyor"}
+                  </span>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-1">Alıcı Türü</label>
+                  <p className="text-google-gray-900">{selectedNotification.recipientType || "Genel"}</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-1">Oluşturulma Tarihi</label>
+                  <p className="text-google-gray-900">{formatDate(selectedNotification.createdAt)} {formatTime(selectedNotification.createdAt)}</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-1">Gönderen</label>
+                  <p className="text-google-gray-900">{selectedNotification.sender || "Sistem"}</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-1">Alıcı Sayısı</label>
+                  <p className="text-google-gray-900">{selectedNotification.recipientCount || 0} kişi</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-1">Durum</label>
+                  <span className={`text-sm font-medium ${
+                    selectedNotification.isRead ? 'text-green-600' : 'text-yellow-600'
+                  }`}>
+                    {selectedNotification.isRead ? 'Okundu' : 'Okunmadı'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex gap-4 pt-6 border-t border-google-gray-200">
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="flex-1 px-4 py-2 border border-google-gray-300 text-google-gray-700 rounded-lg hover:bg-google-gray-50 transition-colors duration-200"
+                >
+                  Kapat
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Notification Modal */}
+      {showEditModal && editingNotification && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-google-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-google-gray-900">Bildirim Düzenle</h2>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="text-google-gray-400 hover:text-google-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateNotification} className="p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                  Başlık *
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  value={editingNotification.title}
+                  onChange={handleEditInputChange}
+                  className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                  placeholder="Bildirim başlığı"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                  Mesaj *
+                </label>
+                <textarea
+                  name="message"
+                  value={editingNotification.message}
+                  onChange={handleEditInputChange}
+                  rows={4}
+                  className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                  placeholder="Bildirim mesajı"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                    Tür *
+                  </label>
+                  <select
+                    name="type"
+                    value={editingNotification.type}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                  >
+                    <option value="info">Bilgi</option>
+                    <option value="success">Başarı</option>
+                    <option value="warning">Uyarı</option>
+                    <option value="error">Hata</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                    Alıcı Türü *
+                  </label>
+                  <select
+                    name="recipientType"
+                    value={editingNotification.recipientType}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                  >
+                    <option value="all">Tüm Kullanıcılar</option>
+                    <option value="students">Öğrenciler</option>
+                    <option value="instructors">Eğitmenler</option>
+                    <option value="admins">Yöneticiler</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                  Zamanlanmış Tarih
+                </label>
+                <input
+                  type="datetime-local"
+                  name="scheduledDate"
+                  value={editingNotification.scheduledDate}
+                  onChange={handleEditInputChange}
+                  className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                />
+              </div>
+
+              <div className="flex gap-4 pt-6 border-t border-google-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 px-4 py-2 border border-google-gray-300 text-google-gray-700 rounded-lg hover:bg-google-gray-50 transition-colors duration-200"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-google-blue text-white rounded-lg hover:bg-blue-600 transition-colors duration-200"
+                >
+                  Güncelle
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

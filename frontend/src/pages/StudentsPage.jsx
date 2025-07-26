@@ -48,6 +48,10 @@ export default function StudentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterGender, setFilterGender] = useState("");
   const [filterLicenseClass, setFilterLicenseClass] = useState("");
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [editingStudent, setEditingStudent] = useState(null);
 
   // Öğrenci listesini çek
   useEffect(() => {
@@ -242,6 +246,121 @@ export default function StudentsPage() {
     }
   };
 
+  const handleViewStudent = (student) => {
+    setSelectedStudent(student);
+    setShowDetailModal(true);
+  };
+
+  const handleEditStudent = (student) => {
+    setEditingStudent({
+      id: student.id,
+      ad: student.ad || student.user?.fullName?.split(' ')[0] || '',
+      soyad: student.soyad || student.user?.fullName?.split(' ').slice(1).join(' ') || '',
+      tc: student.tc || '',
+      email: student.email || student.user?.email || '',
+      telefon: student.telefon || '',
+      dogumTarihi: student.dogumTarihi || '',
+      cinsiyet: student.cinsiyet || '',
+      ehliyetSinifi: student.ehliyetSinifi || '',
+      notlar: student.notlar || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateStudent = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem("token");
+      const headers = {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      };
+
+      const studentData = {
+        fullName: `${editingStudent.ad} ${editingStudent.soyad}`,
+        email: editingStudent.email,
+        telefon: editingStudent.telefon,
+        tc: editingStudent.tc,
+        dogumTarihi: editingStudent.dogumTarihi,
+        cinsiyet: editingStudent.cinsiyet,
+        licenseType: editingStudent.ehliyetSinifi,
+        notlar: editingStudent.notlar
+      };
+
+      const res = await fetch(`http://192.168.1.78:5068/api/students/${editingStudent.id}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(studentData)
+      });
+
+      if (res.ok) {
+        const updatedStudent = await res.json();
+        setStudents(students.map(student => 
+          student.id === editingStudent.id ? {
+            ...student,
+            ad: editingStudent.ad,
+            soyad: editingStudent.soyad,
+            tc: editingStudent.tc,
+            email: editingStudent.email,
+            telefon: editingStudent.telefon,
+            dogumTarihi: editingStudent.dogumTarihi,
+            cinsiyet: editingStudent.cinsiyet,
+            ehliyetSinifi: editingStudent.ehliyetSinifi,
+            notlar: editingStudent.notlar,
+            user: {
+              fullName: `${editingStudent.ad} ${editingStudent.soyad}`,
+              email: editingStudent.email
+            }
+          } : student
+        ));
+        setShowEditModal(false);
+        setEditingStudent(null);
+        setToast({ type: "success", message: "Öğrenci başarıyla güncellendi!" });
+      } else {
+        const errorText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+    } catch (error) {
+      setToast({ type: "error", message: "Öğrenci güncellenirken hata oluştu: " + error.message });
+    }
+  };
+
+  const handleDeleteStudent = async (studentId) => {
+    if (!window.confirm("Bu öğrenciyi silmek istediğinizden emin misiniz?")) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const headers = {
+        "Authorization": `Bearer ${token}`
+      };
+
+      const res = await fetch(`http://192.168.1.78:5068/api/students/${studentId}`, {
+        method: "DELETE",
+        headers
+      });
+
+      if (res.ok) {
+        setStudents(students.filter(student => student.id !== studentId));
+        setToast({ type: "success", message: "Öğrenci başarıyla silindi!" });
+      } else {
+        const errorText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+    } catch (error) {
+      setToast({ type: "error", message: "Öğrenci silinirken hata oluştu: " + error.message });
+    }
+  };
+
+  const handleEditInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditingStudent(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   if (listLoading) {
     return (
       <div className="min-h-screen bg-google-gray-50 font-inter">
@@ -355,13 +474,22 @@ export default function StudentsPage() {
                   </div>
                   
                   <div className="flex gap-2">
-                    <button className="p-2 hover:bg-google-gray-100 rounded-lg transition-colors duration-200">
+                    <button
+                      onClick={() => handleViewStudent(student)}
+                      className="p-2 hover:bg-google-gray-100 rounded-lg transition-colors duration-200"
+                    >
                       <Eye size={16} className="text-google-gray-600" />
                     </button>
-                    <button className="p-2 hover:bg-google-gray-100 rounded-lg transition-colors duration-200">
+                    <button
+                      onClick={() => handleEditStudent(student)}
+                      className="p-2 hover:bg-google-gray-100 rounded-lg transition-colors duration-200"
+                    >
                       <Edit size={16} className="text-google-gray-600" />
                     </button>
-                    <button className="p-2 hover:bg-red-100 rounded-lg transition-colors duration-200">
+                    <button
+                      onClick={() => handleDeleteStudent(student.id)}
+                      className="p-2 hover:bg-red-100 rounded-lg transition-colors duration-200"
+                    >
                       <Trash2 size={16} className="text-red-600" />
                     </button>
                   </div>
@@ -701,6 +829,276 @@ export default function StudentsPage() {
                   className="flex-1 px-4 py-2 bg-google-blue text-white rounded-lg hover:bg-blue-600 transition-colors duration-200"
                 >
                   Kurs Ekle
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Student Detail Modal */}
+      {showDetailModal && selectedStudent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-google-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-google-gray-900">Öğrenci Detayları</h2>
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="text-google-gray-400 hover:text-google-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-google-blue rounded-lg flex items-center justify-center">
+                  <User className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-google-gray-900">
+                    {selectedStudent.user?.fullName || `${selectedStudent.ad} ${selectedStudent.soyad}`}
+                  </h3>
+                  <p className="text-google-gray-600">TC: {selectedStudent.tc}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-google-gray-700 mb-1">Ad Soyad</label>
+                    <p className="text-google-gray-900">{selectedStudent.user?.fullName || `${selectedStudent.ad} ${selectedStudent.soyad}`}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-google-gray-700 mb-1">TC Kimlik No</label>
+                    <p className="text-google-gray-900">{selectedStudent.tc}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-google-gray-700 mb-1">E-posta</label>
+                    <p className="text-google-gray-900">{selectedStudent.user?.email || selectedStudent.email}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-google-gray-700 mb-1">Telefon</label>
+                    <p className="text-google-gray-900">{selectedStudent.telefon}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-google-gray-700 mb-1">Doğum Tarihi</label>
+                    <p className="text-google-gray-900">{formatDate(selectedStudent.dogumTarihi)}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-google-gray-700 mb-1">Cinsiyet</label>
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getGenderColor(selectedStudent.cinsiyet)}`}>
+                      {selectedStudent.cinsiyet}
+                    </span>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-google-gray-700 mb-1">Ehliyet Sınıfı</label>
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getLicenseClassColor(selectedStudent.ehliyetSinifi)}`}>
+                      {selectedStudent.ehliyetSinifi} Sınıfı
+                    </span>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-google-gray-700 mb-1">Kayıt Tarihi</label>
+                    <p className="text-google-gray-900">{formatDate(selectedStudent.kayitTarihi)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {selectedStudent.notlar && (
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-1">Notlar</label>
+                  <p className="text-google-gray-900 bg-google-gray-50 p-3 rounded-lg">{selectedStudent.notlar}</p>
+                </div>
+              )}
+
+              <div className="flex gap-4 pt-6 border-t border-google-gray-200">
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="flex-1 px-4 py-2 border border-google-gray-300 text-google-gray-700 rounded-lg hover:bg-google-gray-50 transition-colors duration-200"
+                >
+                  Kapat
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Student Modal */}
+      {showEditModal && editingStudent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-google-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-google-gray-900">Öğrenci Düzenle</h2>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="text-google-gray-400 hover:text-google-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateStudent} className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                    Ad *
+                  </label>
+                  <input
+                    type="text"
+                    name="ad"
+                    value={editingStudent.ad}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                    placeholder="Öğrenci adı"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                    Soyad *
+                  </label>
+                  <input
+                    type="text"
+                    name="soyad"
+                    value={editingStudent.soyad}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                    placeholder="Öğrenci soyadı"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                    TC Kimlik No *
+                  </label>
+                  <input
+                    type="text"
+                    name="tc"
+                    value={editingStudent.tc}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                    placeholder="11 haneli TC kimlik numarası"
+                    disabled
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                    E-posta *
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={editingStudent.email}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                    placeholder="ornek@email.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                    Telefon *
+                  </label>
+                  <input
+                    type="tel"
+                    name="telefon"
+                    value={editingStudent.telefon}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                    placeholder="05XX XXX XX XX"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                    Doğum Tarihi *
+                  </label>
+                  <input
+                    type="date"
+                    name="dogumTarihi"
+                    value={editingStudent.dogumTarihi}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                    Cinsiyet *
+                  </label>
+                  <select
+                    name="cinsiyet"
+                    value={editingStudent.cinsiyet}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                  >
+                    <option value="">Seçiniz</option>
+                    {cinsiyetler.map(gender => (
+                      <option key={gender} value={gender}>{gender}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                    Ehliyet Sınıfı *
+                  </label>
+                  <select
+                    name="ehliyetSinifi"
+                    value={editingStudent.ehliyetSinifi}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                  >
+                    <option value="">Seçiniz</option>
+                    {ehliyetSiniflari.map(licenseClass => (
+                      <option key={licenseClass} value={licenseClass}>{licenseClass}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                  Notlar
+                </label>
+                <textarea
+                  name="notlar"
+                  value={editingStudent.notlar}
+                  onChange={handleEditInputChange}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                  placeholder="Öğrenci hakkında notlar..."
+                />
+              </div>
+
+              <div className="flex gap-4 pt-6 border-t border-google-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 px-4 py-2 border border-google-gray-300 text-google-gray-700 rounded-lg hover:bg-google-gray-50 transition-colors duration-200"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-google-blue text-white rounded-lg hover:bg-blue-600 transition-colors duration-200"
+                >
+                  Güncelle
                 </button>
               </div>
             </form>

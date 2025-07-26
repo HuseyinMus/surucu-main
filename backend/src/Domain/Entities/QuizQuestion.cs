@@ -12,6 +12,8 @@ public class QuizQuestion
     public Guid QuizId { get; set; }
     public string QuestionText { get; set; } = null!;
     public QuestionType QuestionType { get; set; }
+    public string? MediaType { get; set; } // "none", "image", "video"
+    public string? MediaUrl { get; set; }
     // Navigation properties
     public Quiz Quiz { get; set; } = null!;
     public ICollection<QuizOption> Options { get; set; } = new List<QuizOption>();

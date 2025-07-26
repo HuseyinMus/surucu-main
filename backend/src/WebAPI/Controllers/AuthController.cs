@@ -27,4 +27,11 @@ public class AuthController : ControllerBase
         var result = await _authService.LoginAsync(request);
         return Ok(result);
     }
+
+    [HttpPost("login-tc")]
+    public async Task<IActionResult> LoginWithTc([FromBody] TcLoginRequest request)
+    {
+        var result = await _authService.LoginWithTcAsync(request);
+        return Ok(result);
+    }
 } 

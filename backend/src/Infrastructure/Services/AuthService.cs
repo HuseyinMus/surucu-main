@@ -54,6 +54,51 @@ public class AuthService : IAuthService
         };
     }
 
+    public async Task<AuthResponse> LoginWithTcAsync(TcLoginRequest request)
+    {
+        // TC numarası ile kullanıcıyı bul
+        var user = await _db.Users
+            .Include(u => u.Instructor)
+            .FirstOrDefaultAsync(u => u.TcNumber == request.TcNumber);
+
+        if (user == null || !user.IsActive)
+            throw new Exception("TC kimlik numarası bulunamadı.");
+
+        // Sadece eğitmenler TC ile giriş yapabilir
+        if (user.Role != UserRole.Instructor)
+            throw new Exception("Bu giriş yöntemi sadece eğitmenler için geçerlidir.");
+
+        // Şifre kontrolü (eğitmenler için basit şifre sistemi)
+        // Gerçek uygulamada daha güvenli bir sistem kullanılmalı
+        if (string.IsNullOrEmpty(user.PasswordHash))
+        {
+            // İlk giriş - TC numarasının son 4 hanesi şifre olarak kullanılır
+            var defaultPassword = user.TcNumber!.Substring(7, 4);
+            if (request.Password != defaultPassword)
+                throw new Exception("Geçersiz şifre. Varsayılan şifre: TC numaranızın son 4 hanesi");
+        }
+        else
+        {
+            // Normal şifre kontrolü
+            var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<User>();
+            var result = hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
+            
+            if (result == Microsoft.AspNetCore.Identity.PasswordVerificationResult.Failed)
+                throw new Exception("Geçersiz şifre");
+        }
+
+        var token = GenerateJwtToken(user);
+        return new AuthResponse
+        {
+            Token = token,
+            UserId = user.Id,
+            FullName = user.FullName,
+            Email = user.Email,
+            Role = user.Role.ToString(),
+            DrivingSchoolId = user.DrivingSchoolId
+        };
+    }
+
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
         User? user = null;

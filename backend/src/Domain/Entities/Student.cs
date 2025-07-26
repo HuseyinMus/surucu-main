@@ -23,6 +23,7 @@ public class Student : ITenantEntity
     public string? PhoneNumber { get; set; }
     public string? Gender { get; set; }
     public string? Notes { get; set; }
+    public bool IsActive { get; set; } = true;
     // Navigation properties
     public User User { get; set; } = null!;
     public DrivingSchool DrivingSchool { get; set; } = null!;

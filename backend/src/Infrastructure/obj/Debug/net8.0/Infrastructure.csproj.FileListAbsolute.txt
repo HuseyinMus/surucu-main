@@ -56,3 +56,4 @@ C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\Infrastruc
 C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.pdb
 C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.genruntimeconfig.cache
 C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\ref\Infrastructure.dll
+C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.sourcelink.json

@@ -8,4 +8,6 @@ public interface INotificationService
     Task<NotificationResponse> SendNotificationAsync(NotificationCreateRequest request);
     Task<List<NotificationResponse>> GetUserNotificationsAsync(Guid userId);
     Task<List<Notification>> GetAllNotificationsAsync();
+    Task<NotificationResponse> UpdateNotificationAsync(Guid id, NotificationUpdateRequest request);
+    Task DeleteNotificationAsync(Guid id);
 } 

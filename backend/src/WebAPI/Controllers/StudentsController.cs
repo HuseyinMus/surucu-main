@@ -331,4 +331,111 @@ public class StudentsController : ControllerBase
         var report = await progressService.GetProgressReportAsync(id, student.DrivingSchoolId);
         return Ok(report);
     }
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin,Instructor")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] Dictionary<string, object> request)
+    {
+        try
+        {
+            var student = await _db.Students
+                .Include(s => s.User)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (student == null)
+                return NotFound("Öğrenci bulunamadı");
+
+            // Frontend'den gelen veriyi parse et
+            var fullName = request.ContainsKey("fullName") ? request["fullName"]?.ToString() ?? "" : "";
+            var email = request.ContainsKey("email") ? request["email"]?.ToString() ?? "" : "";
+            var telefon = request.ContainsKey("telefon") ? request["telefon"]?.ToString() ?? "" : "";
+            var tc = request.ContainsKey("tc") ? request["tc"]?.ToString() ?? "" : "";
+            var dogumTarihi = request.ContainsKey("dogumTarihi") ? request["dogumTarihi"]?.ToString() ?? "" : "";
+            var cinsiyet = request.ContainsKey("cinsiyet") ? request["cinsiyet"]?.ToString() ?? "" : "";
+            var licenseType = request.ContainsKey("licenseType") ? request["licenseType"]?.ToString() ?? "" : "";
+            var notlar = request.ContainsKey("notlar") ? request["notlar"]?.ToString() ?? "" : "";
+
+            // Email kontrolü (kendi email'i hariç)
+            if (!string.IsNullOrEmpty(email) && email != student.User?.Email)
+            {
+                var existingUser = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
+                if (existingUser != null)
+                {
+                    return BadRequest("Bu e-posta adresi zaten kullanılıyor");
+                }
+            }
+
+            // User bilgilerini güncelle
+            if (student.User != null)
+            {
+                student.User.FullName = fullName;
+                student.User.Email = email;
+            }
+
+            // Student bilgilerini güncelle
+            student.TCNumber = tc;
+            student.PhoneNumber = telefon;
+            student.Gender = cinsiyet;
+            student.LicenseType = licenseType;
+            student.Notes = notlar;
+
+            // Doğum tarihi güncelle
+            if (!string.IsNullOrEmpty(dogumTarihi) && DateTime.TryParse(dogumTarihi, out var parsedDate))
+            {
+                student.BirthDate = DateTime.SpecifyKind(parsedDate, DateTimeKind.Utc);
+            }
+
+            await _db.SaveChangesAsync();
+
+            var response = new
+            {
+                student.Id,
+                student.TCNumber,
+                student.BirthDate,
+                student.LicenseType,
+                student.RegistrationDate,
+                student.PhoneNumber,
+                student.Gender,
+                student.Notes,
+                fullName = student.User?.FullName,
+                email = student.User?.Email
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Öğrenci güncellenirken hata oluştu: {ex.Message}");
+        }
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin,Instructor")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        try
+        {
+            var student = await _db.Students
+                .Include(s => s.User)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (student == null)
+                return NotFound("Öğrenci bulunamadı");
+
+            // Soft delete - IsActive'i false yap
+            if (student.User != null)
+            {
+                student.User.IsActive = false;
+            }
+            student.IsActive = false;
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new { message = "Öğrenci başarıyla silindi" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Öğrenci silinirken hata oluştu: {ex.Message}");
+        }
+    }
 } 

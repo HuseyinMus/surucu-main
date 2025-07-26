@@ -392,3 +392,4 @@ C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\webapi\obj
 C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\webapi\obj\Debug\net8.0\CleanArchApi.pdb
 C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\webapi\obj\Debug\net8.0\CleanArchApi.genruntimeconfig.cache
 C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\webapi\obj\Debug\net8.0\ref\CleanArchApi.dll
+C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\webapi\obj\Debug\net8.0\CleanArchApi.sourcelink.json

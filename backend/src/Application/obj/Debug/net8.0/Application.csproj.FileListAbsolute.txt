@@ -44,3 +44,4 @@ C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\Applicatio
 C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\Application\obj\Debug\net8.0\refint\Application.dll
 C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\Application\obj\Debug\net8.0\Application.pdb
 C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\Application\obj\Debug\net8.0\ref\Application.dll
+C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\Application\obj\Debug\net8.0\Application.sourcelink.json

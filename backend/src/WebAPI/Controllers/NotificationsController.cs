@@ -19,6 +19,15 @@ public class NotificationsController : ControllerBase
     [Authorize(Roles = "Admin,Instructor")]
     public async Task<IActionResult> Send([FromBody] NotificationCreateRequest request)
     {
+        // Get DrivingSchoolId from JWT token
+        var drivingSchoolIdClaim = User.FindFirst("DrivingSchoolId");
+        if (drivingSchoolIdClaim == null || !Guid.TryParse(drivingSchoolIdClaim.Value, out var drivingSchoolId))
+        {
+            return BadRequest("DrivingSchoolId bulunamadı");
+        }
+        
+        request.DrivingSchoolId = drivingSchoolId;
+        
         var result = await _service.SendNotificationAsync(request);
         return Ok(result);
     }
@@ -96,5 +105,35 @@ public class NotificationsController : ControllerBase
         
         var last5 = notifications.OrderByDescending(n => n.SentAt).Take(5);
         return Ok(last5);
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin,Instructor")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] NotificationUpdateRequest request)
+    {
+        try
+        {
+            var result = await _service.UpdateNotificationAsync(id, request);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Bildirim güncellenirken hata oluştu: {ex.Message}");
+        }
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin,Instructor")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        try
+        {
+            await _service.DeleteNotificationAsync(id);
+            return Ok(new { message = "Bildirim başarıyla silindi" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Bildirim silinirken hata oluştu: {ex.Message}");
+        }
     }
 } 

@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build outputs
+*/bin/
+*/obj/
+*/build/
+*/dist/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Uploads (keep some for demo)
+backend/src/WebAPI/uploads/*.mp4
+backend/src/WebAPI/uploads/*.png
+backend/src/WebAPI/uploads/*.pdf
+
+# Temporary files
+*.tmp
+*.temp 
