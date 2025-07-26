@@ -222,14 +222,14 @@ export default function CourseDetailPage() {
   };
 
   const formatDuration = (duration) => {
-    if (!duration) return "Süre belirtilmemiş";
+    if (!duration || isNaN(duration) || duration <= 0) return "Süre belirtilmemiş";
     const minutes = Math.floor(duration / 60);
     const seconds = duration % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   const formatTotalDuration = (totalSeconds) => {
-    if (!totalSeconds) return "0 dk";
+    if (!totalSeconds || isNaN(totalSeconds) || totalSeconds <= 0) return "0 dk";
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     
@@ -383,7 +383,10 @@ export default function CourseDetailPage() {
                       <Clock size={24} className="text-green-600" />
                     </div>
                     <p className="text-sm font-medium text-gray-900">
-                      {formatTotalDuration(contents.reduce((total, content) => total + (content.duration || 0), 0))}
+                      {formatTotalDuration(contents.reduce((total, content) => {
+                        const duration = parseInt(content.duration) || 0;
+                        return total + duration;
+                      }, 0))}
                     </p>
                     <p className="text-xs text-gray-600">Toplam Süre</p>
                   </div>
@@ -775,7 +778,10 @@ export default function CourseDetailPage() {
                   <div>
                     <p className="text-sm font-medium text-gray-900">Toplam Süre</p>
                     <p className="text-sm text-gray-600">
-                      {formatTotalDuration(contents.reduce((total, content) => total + (content.duration || 0), 0))}
+                      {formatTotalDuration(contents.reduce((total, content) => {
+                        const duration = parseInt(content.duration) || 0;
+                        return total + duration;
+                      }, 0))}
                     </p>
                   </div>
                 </div>

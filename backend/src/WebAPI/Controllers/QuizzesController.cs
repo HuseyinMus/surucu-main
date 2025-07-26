@@ -93,14 +93,22 @@ public class QuizzesController : ControllerBase
     [Authorize(Roles = "Admin,Instructor")]
     public async Task<IActionResult> CreateQuiz([FromBody] QuizCreateRequest request)
     {
+        // JWT token'dan DrivingSchoolId'yi al
+        var drivingSchoolIdClaim = User.FindFirst("DrivingSchoolId")?.Value;
+        if (string.IsNullOrEmpty(drivingSchoolIdClaim) || !Guid.TryParse(drivingSchoolIdClaim, out var drivingSchoolId))
+        {
+            return BadRequest("Geçersiz sürücü kursu bilgisi");
+        }
+
         var quiz = new Quiz
         {
             Id = Guid.NewGuid(),
-            DrivingSchoolId = request.DrivingSchoolId,
+            DrivingSchoolId = drivingSchoolId,
             CourseId = request.CourseId,
             Title = request.Title,
             Description = request.Description,
             TotalPoints = request.TotalPoints,
+            Status = request.Status ?? "active",
             CreatedAt = DateTime.UtcNow
         };
         _db.Quizzes.Add(quiz);
@@ -112,7 +120,8 @@ public class QuizzesController : ControllerBase
             quiz.TotalPoints,
             quiz.CourseId,
             quiz.DrivingSchoolId,
-            quiz.CreatedAt
+            quiz.CreatedAt,
+            quiz.Status
         });
     }
 

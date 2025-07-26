@@ -20,6 +20,16 @@ export default function ExamsPage() {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newExam, setNewExam] = useState({
+    title: "",
+    description: "",
+    duration: 60,
+    totalPoints: 100,
+    status: "active"
+  });
+  const [courses, setCourses] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState("");
 
   useEffect(() => {
     async function fetchExams() {
@@ -58,6 +68,23 @@ export default function ExamsPage() {
     fetchExams();
   }, []);
 
+  useEffect(() => {
+    async function fetchCourses() {
+      try {
+        const token = localStorage.getItem("token");
+        const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+        const res = await fetch("http://192.168.1.78:5068/api/courses", { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setCourses(data);
+        }
+      } catch (error) {
+        console.error("Kurslar yüklenemedi:", error);
+      }
+    }
+    fetchCourses();
+  }, []);
+
   const filteredExams = exams.filter(exam =>
     exam.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     exam.description?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -68,13 +95,7 @@ export default function ExamsPage() {
     return new Date(dateString).toLocaleDateString('tr-TR');
   };
 
-  const formatTime = (dateString) => {
-    if (!dateString) return "-";
-    return new Date(dateString).toLocaleTimeString('tr-TR', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-  };
+
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -92,6 +113,55 @@ export default function ExamsPage() {
       case "draft": return <AlertCircle size={16} />;
       default: return <AlertCircle size={16} />;
     }
+  };
+
+  const handleAddExam = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem("token");
+      const headers = {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      };
+
+      const examData = {
+        ...newExam,
+        courseId: selectedCourseId || null,
+        duration: newExam.duration
+      };
+
+      const res = await fetch("http://192.168.1.78:5068/api/quizzes", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(examData)
+      });
+
+      if (res.ok) {
+        const newExamData = await res.json();
+        setExams([...exams, newExamData]);
+        setShowAddModal(false);
+        setNewExam({
+          title: "",
+          description: "",
+          duration: 60,
+          totalPoints: 100,
+          status: "active"
+        });
+        setSelectedCourseId("");
+      } else {
+        throw new Error("Sınav eklenemedi");
+      }
+    } catch (error) {
+      setError("Sınav eklenirken hata oluştu: " + error.message);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewExam(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   if (loading) {
@@ -116,7 +186,7 @@ export default function ExamsPage() {
             </div>
             
             <button
-              onClick={() => {/* TODO: Add exam modal */}}
+              onClick={() => setShowAddModal(true)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-google-blue text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 shadow-sm"
             >
               <Plus size={20} />
@@ -263,6 +333,141 @@ export default function ExamsPage() {
           </div>
         )}
       </div>
+
+      {/* Add Exam Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">Yeni Sınav Ekle</h2>
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <span className="sr-only">Kapat</span>
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleAddExam} className="p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Sınav Başlığı *
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  value={newExam.title}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Sınav başlığını girin"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Açıklama
+                </label>
+                <textarea
+                  name="description"
+                  value={newExam.description}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Sınav açıklamasını girin"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Süre (dakika) *
+                  </label>
+                  <input
+                    type="number"
+                    name="duration"
+                    value={newExam.duration}
+                    onChange={handleInputChange}
+                    required
+                    min="1"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Toplam Puan *
+                  </label>
+                  <input
+                    type="number"
+                    name="totalPoints"
+                    value={newExam.totalPoints}
+                    onChange={handleInputChange}
+                    required
+                    min="1"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Kurs (Opsiyonel)
+                </label>
+                <select
+                  value={selectedCourseId}
+                  onChange={(e) => setSelectedCourseId(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Kurs seçin</option>
+                  {courses.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Durum
+                </label>
+                <select
+                  name="status"
+                  value={newExam.status}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="active">Aktif</option>
+                  <option value="inactive">Pasif</option>
+                  <option value="draft">Taslak</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Sınav Ekle
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
