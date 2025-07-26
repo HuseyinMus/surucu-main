@@ -228,6 +228,18 @@ export default function CourseDetailPage() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  const formatTotalDuration = (totalSeconds) => {
+    if (!totalSeconds) return "0 dk";
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    
+    if (hours > 0) {
+      return `${hours} sa ${minutes} dk`;
+    } else {
+      return `${minutes} dk`;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -371,7 +383,7 @@ export default function CourseDetailPage() {
                       <Clock size={24} className="text-green-600" />
                     </div>
                     <p className="text-sm font-medium text-gray-900">
-                      {contents.reduce((total, content) => total + (content.duration || 0), 0)} dk
+                      {formatTotalDuration(contents.reduce((total, content) => total + (content.duration || 0), 0))}
                     </p>
                     <p className="text-xs text-gray-600">Toplam Süre</p>
                   </div>
@@ -763,7 +775,7 @@ export default function CourseDetailPage() {
                   <div>
                     <p className="text-sm font-medium text-gray-900">Toplam Süre</p>
                     <p className="text-sm text-gray-600">
-                      {contents.reduce((total, content) => total + (content.duration || 0), 0)} dakika
+                      {formatTotalDuration(contents.reduce((total, content) => total + (content.duration || 0), 0))}
                     </p>
                   </div>
                 </div>
