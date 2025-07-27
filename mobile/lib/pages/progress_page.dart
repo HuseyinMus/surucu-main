@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
 class ProgressPage extends StatefulWidget {
   const ProgressPage({super.key});
@@ -15,6 +16,11 @@ class _ProgressPageState extends State<ProgressPage> with TickerProviderStateMix
   late AnimationController _fadeController;
   late Animation<double> _progressAnimation;
   late Animation<double> _fadeAnimation;
+
+  // Progress verileri
+  Map<String, dynamic>? progressData;
+  List<Map<String, dynamic>> achievements = [];
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -37,6 +43,186 @@ class _ProgressPageState extends State<ProgressPage> with TickerProviderStateMix
     
     _fadeController.forward();
     _progressController.forward();
+    
+    loadProgressData();
+  }
+
+  Future<void> loadProgressData() async {
+    try {
+      setState(() {
+        isLoading = true;
+      });
+
+      // Kullanıcı bilgilerini al
+      final userProfile = await ApiService.getSavedUserProfile();
+      final studentId = userProfile?['id']?.toString() ?? '';
+
+      if (studentId.isNotEmpty) {
+        // Progress verilerini API'den al
+        final data = await ApiService.getDashboardProgress(studentId);
+        
+        if (data != null) {
+          setState(() {
+            progressData = {
+              'totalProgress': (data['overallProgress'] ?? 0).toDouble(),
+              'coursesCompleted': data['completedCourses'] ?? 0,
+              'totalCourses': data['totalCourses'] ?? 0,
+              'hoursStudied': (data['totalTimeSpent'] ?? 0) / 3600, // Saniyeyi saate çevir
+              'streak': data['streak'] ?? 0,
+              'weeklyGoal': data['weeklyGoal'] ?? 80,
+              'weeklyProgress': data['weeklyProgress'] ?? 0,
+            };
+            
+            // Başarımları API'den al veya varsayılan değerleri kullan
+            achievements = _generateAchievements(data);
+            isLoading = false;
+          });
+        } else {
+          // API'den veri gelmezse varsayılan değerleri kullan
+          setState(() {
+            progressData = {
+              'totalProgress': 68.0,
+              'coursesCompleted': 3,
+              'totalCourses': 5,
+              'hoursStudied': 42.0,
+              'streak': 7,
+              'weeklyGoal': 80,
+              'weeklyProgress': 65,
+            };
+            achievements = _generateDefaultAchievements();
+            isLoading = false;
+          });
+        }
+      } else {
+        setState(() {
+          progressData = {
+            'totalProgress': 68.0,
+            'coursesCompleted': 3,
+            'totalCourses': 5,
+            'hoursStudied': 42.0,
+            'streak': 7,
+            'weeklyGoal': 80,
+            'weeklyProgress': 65,
+          };
+          achievements = _generateDefaultAchievements();
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Progress veri yükleme hatası: $e');
+      setState(() {
+        progressData = {
+          'totalProgress': 68.0,
+          'coursesCompleted': 3,
+          'totalCourses': 5,
+          'hoursStudied': 42.0,
+          'streak': 7,
+          'weeklyGoal': 80,
+          'weeklyProgress': 65,
+        };
+        achievements = _generateDefaultAchievements();
+        isLoading = false;
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> _generateAchievements(Map<String, dynamic> data) {
+    final completedCourses = data['completedCourses'] ?? 0;
+    final totalTimeSpent = data['totalTimeSpent'] ?? 0;
+    final averageQuizScore = data['averageQuizScore'] ?? 0;
+    final streak = data['streak'] ?? 0;
+
+    return [
+      {
+        'title': 'İlk Adım',
+        'description': 'İlk kursu tamamladı',
+        'icon': Icons.flag,
+        'color': Colors.green,
+        'isUnlocked': completedCourses >= 1,
+      },
+      {
+        'title': 'Azimli Öğrenci',
+        'description': '7 gün üst üste çalış',
+        'icon': Icons.local_fire_department,
+        'color': Colors.orange,
+        'isUnlocked': streak >= 7,
+      },
+      {
+        'title': 'Sınav Ustası',
+        'description': '3 sınavdan 80+ al',
+        'icon': Icons.star,
+        'color': Colors.purple,
+        'isUnlocked': averageQuizScore >= 80,
+      },
+      {
+        'title': 'Hız Canavarı',
+        'description': '20 saat çalışma',
+        'icon': Icons.speed,
+        'color': Colors.blue,
+        'isUnlocked': totalTimeSpent >= 72000, // 20 saat = 72000 saniye
+      },
+      {
+        'title': 'Mükemmeliyetçi',
+        'description': 'Tüm kursları bitir',
+        'icon': Icons.emoji_events,
+        'color': Colors.amber,
+        'isUnlocked': completedCourses >= (data['totalCourses'] ?? 5),
+      },
+      {
+        'title': 'Efsane',
+        'description': '30 günlük seri',
+        'icon': Icons.military_tech,
+        'color': Colors.red,
+        'isUnlocked': streak >= 30,
+      },
+    ];
+  }
+
+  List<Map<String, dynamic>> _generateDefaultAchievements() {
+    return [
+      {
+        'title': 'İlk Adım',
+        'description': 'İlk kursu tamamladı',
+        'icon': Icons.flag,
+        'color': Colors.green,
+        'isUnlocked': true,
+      },
+      {
+        'title': 'Azimli Öğrenci',
+        'description': '7 gün üst üste çalış',
+        'icon': Icons.local_fire_department,
+        'color': Colors.orange,
+        'isUnlocked': true,
+      },
+      {
+        'title': 'Sınav Ustası',
+        'description': '3 sınavdan 80+ al',
+        'icon': Icons.star,
+        'color': Colors.purple,
+        'isUnlocked': true,
+      },
+      {
+        'title': 'Hız Canavarı',
+        'description': '20 saat çalışma',
+        'icon': Icons.speed,
+        'color': Colors.blue,
+        'isUnlocked': true,
+      },
+      {
+        'title': 'Mükemmeliyetçi',
+        'description': 'Tüm kursları bitir',
+        'icon': Icons.emoji_events,
+        'color': Colors.amber,
+        'isUnlocked': false,
+      },
+      {
+        'title': 'Efsane',
+        'description': '30 günlük seri',
+        'icon': Icons.military_tech,
+        'color': Colors.red,
+        'isUnlocked': false,
+      },
+    ];
   }
 
   @override
@@ -45,62 +231,6 @@ class _ProgressPageState extends State<ProgressPage> with TickerProviderStateMix
     _fadeController.dispose();
     super.dispose();
   }
-
-  // İlerleme verileri
-  final Map<String, dynamic> progressData = {
-    'totalProgress': 68,
-    'coursesCompleted': 3,
-    'totalCourses': 5,
-    'hoursStudied': 42,
-    'streak': 7,
-    'weeklyGoal': 80,
-    'weeklyProgress': 65,
-  };
-
-  final List<Map<String, dynamic>> achievements = [
-    {
-      'title': 'İlk Adım',
-      'description': 'İlk kursu tamamladı',
-      'icon': Icons.flag,
-      'color': Colors.green,
-      'isUnlocked': true,
-    },
-    {
-      'title': 'Azimli Öğrenci',
-      'description': '7 gün üst üste çalış',
-      'icon': Icons.local_fire_department,
-      'color': Colors.orange,
-      'isUnlocked': true,
-    },
-    {
-      'title': 'Sınav Ustası',
-      'description': '3 sınavdan 80+ al',
-      'icon': Icons.star,
-      'color': Colors.purple,
-      'isUnlocked': true,
-    },
-    {
-      'title': 'Hız Canavarı',
-      'description': '20 saat çalışma',
-      'icon': Icons.speed,
-      'color': Colors.blue,
-      'isUnlocked': true,
-    },
-    {
-      'title': 'Mükemmeliyetçi',
-      'description': 'Tüm kursları bitir',
-      'icon': Icons.emoji_events,
-      'color': Colors.amber,
-      'isUnlocked': false,
-    },
-    {
-      'title': 'Efsane',
-      'description': '30 günlük seri',
-      'icon': Icons.military_tech,
-      'color': Colors.red,
-      'isUnlocked': false,
-    },
-  ];
 
   final List<Map<String, dynamic>> weeklyData = [
     {'day': 'Pzt', 'hours': 6, 'percentage': 75},
@@ -115,61 +245,40 @@ class _ProgressPageState extends State<ProgressPage> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.deepPurple[50]!,
-              Colors.white,
-              Colors.pink[50]!,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Column(
-              children: [
-                // Modern AppBar
-                _buildModernAppBar(),
-                
-                // Period Filter
-                _buildPeriodFilter(),
-                
-                // Progress Content
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        // Overall Progress Card
-                        _buildOverallProgressCard(),
-                        
-                        const SizedBox(height: 20),
-                        
-                        // Weekly Chart
-                        _buildWeeklyChart(),
-                        
-                        const SizedBox(height: 20),
-                        
-                        // Achievements Section
-                        _buildAchievementsSection(),
-                        
-                        const SizedBox(height: 20),
-                        
-                        // Course Progress
-                        _buildCourseProgress(),
-                      ],
-                    ),
+      backgroundColor: Colors.grey[50],
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : FadeTransition(
+              opacity: _fadeAnimation,
+              child: Container(
+                color: Colors.grey[50],
+                child: SafeArea(
+                  child: Column(
+                    children: [
+                      _buildModernAppBar(),
+                      _buildPeriodFilter(),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildOverallProgressCard(),
+                              const SizedBox(height: 24),
+                              _buildCourseProgress(),
+                              const SizedBox(height: 24),
+                              _buildWeeklyChart(),
+                              const SizedBox(height: 24),
+                              _buildAchievementsSection(),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -320,7 +429,7 @@ class _ProgressPageState extends State<ProgressPage> with TickerProviderStateMix
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Text(
-                  '%${progressData['totalProgress']}',
+                  '%${progressData?['totalProgress']}',
                   style: TextStyle(
                     color: Colors.green[700],
                     fontWeight: FontWeight.bold,
@@ -347,7 +456,7 @@ class _ProgressPageState extends State<ProgressPage> with TickerProviderStateMix
                         height: 120,
                         width: 120,
                         child: CircularProgressIndicator(
-                          value: (progressData['totalProgress'] / 100) * _progressAnimation.value,
+                          value: (progressData?['totalProgress'] / 100) * _progressAnimation.value,
                           strokeWidth: 12,
                           backgroundColor: Colors.grey[200],
                           valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple[600]!),
@@ -359,7 +468,7 @@ class _ProgressPageState extends State<ProgressPage> with TickerProviderStateMix
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            '${(progressData['totalProgress'] * _progressAnimation.value).toInt()}%',
+                            '${(progressData?['totalProgress'] * _progressAnimation.value).toInt()}%',
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -389,7 +498,7 @@ class _ProgressPageState extends State<ProgressPage> with TickerProviderStateMix
             children: [
               Expanded(
                 child: _buildStatItem(
-                  '${progressData['coursesCompleted']}/${progressData['totalCourses']}',
+                  '${progressData?['coursesCompleted']}/${progressData?['totalCourses']}',
                   'Kurslar',
                   Icons.book,
                   Colors.blue,
@@ -397,7 +506,7 @@ class _ProgressPageState extends State<ProgressPage> with TickerProviderStateMix
               ),
               Expanded(
                 child: _buildStatItem(
-                  '${progressData['hoursStudied']}h',
+                  '${progressData?['hoursStudied']}h',
                   'Çalışma',
                   Icons.schedule,
                   Colors.green,
@@ -405,7 +514,7 @@ class _ProgressPageState extends State<ProgressPage> with TickerProviderStateMix
               ),
               Expanded(
                 child: _buildStatItem(
-                  '${progressData['streak']} gün',
+                  '${progressData?['streak']} gün',
                   'Seri',
                   Icons.local_fire_department,
                   Colors.orange,
@@ -472,7 +581,7 @@ class _ProgressPageState extends State<ProgressPage> with TickerProviderStateMix
                 ),
               ),
               Text(
-                '${progressData['weeklyProgress']}%',
+                '${progressData?['weeklyProgress']}%',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,

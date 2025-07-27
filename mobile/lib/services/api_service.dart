@@ -3,8 +3,11 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.1.78:5068/api';
-  static const String serverUrl = 'http://192.168.1.78:5068'; // Video dosyaları için
+  // IP adresini bilgisayarınızın IP'si ile değiştirin
+  // Android Emulator için: 10.0.2.2
+  // Gerçek cihaz için: bilgisayarınızın IP'si (örn: 192.168.1.100)
+  static const String baseUrl = 'http://10.0.2.2:5068/api';
+  static const String serverUrl = 'http://10.0.2.2:5068'; // Video dosyaları için
   
   // HTTP Headers
   static Map<String, String> get _headers => {
@@ -60,12 +63,15 @@ class ApiService {
   static Future<Map<String, dynamic>?> login(String tc) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/auth/login'),
+        Uri.parse('$baseUrl/auth/login-tc'), // Gerçek endpoint'i kullan
         headers: _headers,
         body: jsonEncode({
-          'tcNumber': tc, // TC numarası ile login
+          'TcNumber': tc, // TC numarası ile login
         }),
       );
+
+      print('Login API response status: ${response.statusCode}');
+      print('Login API response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -85,10 +91,108 @@ class ApiService {
           await saveUserProfile(userProfile);
         }
         return data;
+      } else {
+        print('Login failed: ${response.body}');
+        return null;
       }
-      return null;
     } catch (e) {
       print('Login hatası: $e');
+      return null;
+    }
+  }
+
+  // TEST KULLANICI OLUŞTUR
+  static Future<Map<String, dynamic>?> createTestUser() async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/create-test-user'),
+        headers: _headers,
+      );
+
+      print('Create test user API response status: ${response.statusCode}');
+      print('Create test user API response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data;
+      } else {
+        print('Create test user failed: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Create test user hatası: $e');
+      return null;
+    }
+  }
+
+  // TEST API BAĞLANTISI
+  static Future<Map<String, dynamic>?> testApiConnection() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/test'),
+        headers: _headers,
+      );
+
+      print('Test API response status: ${response.statusCode}');
+      print('Test API response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data;
+      } else {
+        print('Test API failed: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Test API hatası: $e');
+      return null;
+    }
+  }
+
+  // DEBUG: KULLANICILARI LİSTELE
+  static Future<Map<String, dynamic>?> debugUsers() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/auth/debug-users'),
+        headers: _headers,
+      );
+
+      print('Debug users API response status: ${response.statusCode}');
+      print('Debug users API response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data;
+      } else {
+        print('Debug users failed: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Debug users hatası: $e');
+      return null;
+    }
+  }
+
+  // ÖĞRENCİ TC NUMARALARINI DÜZELT
+  static Future<Map<String, dynamic>?> fixStudentTc() async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/students/fix-student-tc'),
+        headers: _headers,
+      );
+
+      print('Fix student TC API response status: ${response.statusCode}');
+      print('Fix student TC API response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data;
+      } else {
+        print('Fix student TC failed: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Fix student TC hatası: $e');
       return null;
     }
   }
@@ -251,7 +355,7 @@ class ApiService {
     try {
       final headers = await _authenticatedHeaders;
       final response = await http.get(
-        Uri.parse('$baseUrl/notifications'),
+        Uri.parse('$baseUrl/notifications/student'),
         headers: headers,
       );
 
@@ -261,56 +365,12 @@ class ApiService {
         final List<dynamic> data = jsonDecode(response.body);
         return data.cast<Map<String, dynamic>>();
       } else {
-        // API yoksa mock data döndür
-        print('Notifications API çalışmıyor, mock data döndürüyorum');
-        return [
-          {
-            'id': 1,
-            'title': 'Yeni Kurs Eklendi',
-            'message': 'Güvenli Sürüş kursu artık mevcut. Hemen başla!',
-            'type': 'course',
-            'isRead': false,
-            'createdAt': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
-          },
-          {
-            'id': 2,
-            'title': 'Sınav Sonucun Hazır',
-            'message': 'Trafik İşaretleri sınavından 92 puan aldın. Tebrikler!',
-            'type': 'quiz',
-            'isRead': false,
-            'createdAt': DateTime.now().subtract(const Duration(hours: 5)).toIso8601String(),
-          },
-          {
-            'id': 3,
-            'title': 'Sistem Bildirimi',
-            'message': 'Uygulama başarıyla güncellendi.',
-            'type': 'system',
-            'isRead': true,
-            'createdAt': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
-          },
-        ];
+        print('Notifications API response error: ${response.body}');
+        return null;
       }
     } catch (e) {
       print('Bildirim getirme hatası: $e');
-      // Hata olursa da mock data döndür
-      return [
-        {
-          'id': 1,
-          'title': 'Yeni Kurs Eklendi',
-          'message': 'Güvenli Sürüş kursu artık mevcut. Hemen başla!',
-          'type': 'course',
-          'isRead': false,
-          'createdAt': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
-        },
-        {
-          'id': 2,
-          'title': 'Sınav Sonucun Hazır',
-          'message': 'Trafik İşaretleri sınavından 92 puan aldın. Tebrikler!',
-          'type': 'quiz',
-          'isRead': false,
-          'createdAt': DateTime.now().subtract(const Duration(hours: 5)).toIso8601String(),
-        },
-      ];
+      return null;
     }
   }
 
@@ -350,7 +410,7 @@ class ApiService {
       
       final headers = await _authenticatedHeaders;
       final response = await http.get(
-        Uri.parse('$baseUrl/users/profile'), // Gerçek endpoint deneyalim
+        Uri.parse('$baseUrl/auth/profile'),
         headers: headers,
       );
 
@@ -362,18 +422,8 @@ class ApiService {
         await saveUserProfile(profile); // Başarılı response'u kaydet
         return profile;
       } else {
-        // API yoksa mock data döndür
-        print('Profile API çalışmıyor, mock data döndürüyorum');
-        return {
-          'id': 'user-123',
-          'fullName': 'Test Kullanıcı',
-          'email': 'test@email.com',
-          'role': 'Student',
-          'tcNumber': '12345678901',
-          'phone': '555-123-4567',
-          'drivingSchoolId': 'school-123',
-          'createdAt': '2024-10-15T10:30:00Z'
-        };
+        print('Profile API response error: ${response.body}');
+        return null;
       }
     } catch (e) {
       print('Profil getirme hatası: $e');
@@ -384,17 +434,7 @@ class ApiService {
         return savedProfile;
       }
       
-      // Son çare mock data
-      return {
-        'id': 'user-123',
-        'fullName': 'Test Kullanıcı',
-        'email': 'test@email.com',
-        'role': 'Student',
-        'tcNumber': '12345678901',
-        'phone': '555-123-4567',
-        'drivingSchoolId': 'school-123',
-        'createdAt': '2024-10-15T10:30:00Z'
-      };
+      return null;
     }
   }
 
@@ -449,6 +489,221 @@ class ApiService {
     } else {
       // Belirsiz format, uploads klasörü varsay
       return '$serverUrl/uploads/$relativeUrl';
+    }
+  }
+
+  // PROGRESS API FONKSİYONLARI
+
+  // Öğrenci genel progress özeti
+  static Future<Map<String, dynamic>?> getStudentProgressSummary(String studentId, String courseId) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.get(
+        Uri.parse('$baseUrl/progress/summary/$studentId/$courseId'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      print('Progress summary API response status: ${response.statusCode}');
+      print('Progress summary API response body: ${response.body}');
+      return null;
+    } catch (e) {
+      print('Progress summary hatası: $e');
+      return null;
+    }
+  }
+
+  // Kurs progress detayı
+  static Future<List<Map<String, dynamic>>?> getCourseProgress(String studentId, String courseId) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.get(
+        Uri.parse('$baseUrl/progress/lessons/$studentId/$courseId'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+      print('Course progress API response status: ${response.statusCode}');
+      return null;
+    } catch (e) {
+      print('Course progress hatası: $e');
+      return null;
+    }
+  }
+
+  // Quiz progress bilgisi
+  static Future<Map<String, dynamic>?> getQuizProgress(String studentId, String quizId) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.get(
+        Uri.parse('$baseUrl/progress/quiz/$studentId/$quizId'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      print('Quiz progress API response status: ${response.statusCode}');
+      return null;
+    } catch (e) {
+      print('Quiz progress hatası: $e');
+      return null;
+    }
+  }
+
+  // Dashboard progress özeti
+  static Future<Map<String, dynamic>?> getDashboardProgress(String studentId) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.get(
+        Uri.parse('$baseUrl/progress/analytics/$studentId'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      print('Dashboard progress API response status: ${response.statusCode}');
+      return null;
+    } catch (e) {
+      print('Dashboard progress hatası: $e');
+      return null;
+    }
+  }
+
+  // Ders tamamlama
+  static Future<bool> completeLesson(String studentId, String courseContentId) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.post(
+        Uri.parse('$baseUrl/progress/complete-lesson'),
+        headers: headers,
+        body: jsonEncode({
+          'studentId': studentId,
+          'courseContentId': courseContentId,
+        }),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Ders tamamlama hatası: $e');
+      return false;
+    }
+  }
+
+  // Quiz sonucu kaydetme
+  static Future<bool> submitQuizResult(String studentId, String quizId, int score) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.post(
+        Uri.parse('$baseUrl/progress/quiz-result'),
+        headers: headers,
+        body: jsonEncode({
+          'studentId': studentId,
+          'quizId': quizId,
+          'score': score,
+        }),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Quiz sonucu kaydetme hatası: $e');
+      return false;
+    }
+  }
+
+  // Progress güncelleme
+  static Future<bool> updateProgress(String studentId, String courseContentId, int progress, int timeSpent) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.post(
+        Uri.parse('$baseUrl/progress/update'),
+        headers: headers,
+        body: jsonEncode({
+          'studentId': studentId,
+          'courseContentId': courseContentId,
+          'progress': progress,
+          'timeSpent': timeSpent,
+        }),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Progress güncelleme hatası: $e');
+      return false;
+    }
+  }
+
+  // Genel progress yüzdesi
+  static Future<double?> getOverallProgress(String studentId, String courseId) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.get(
+        Uri.parse('$baseUrl/progress/overall-progress/$studentId/$courseId'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return double.tryParse(response.body);
+      }
+      print('Overall progress API response status: ${response.statusCode}');
+      return null;
+    } catch (e) {
+      print('Overall progress hatası: $e');
+      return null;
+    }
+  }
+
+  // Quiz sorularını getir
+  static Future<List<Map<String, dynamic>>?> getQuizQuestions(String quizId) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.get(
+        Uri.parse('$baseUrl/quizzes/$quizId/questions'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+      print('Quiz questions API response status: ${response.statusCode}');
+      print('Quiz questions API response body: ${response.body}');
+      return null;
+    } catch (e) {
+      print('Quiz questions hatası: $e');
+      return null;
+    }
+  }
+
+  // SÜRÜCÜ KURSU BİLGİLERİ
+  static Future<Map<String, dynamic>?> getDrivingSchoolInfo() async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.get(
+        Uri.parse('$baseUrl/drivingschools/student'),
+        headers: headers,
+      );
+
+      print('Driving school API response status: ${response.statusCode}');
+      print('Driving school API response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('Parsed driving school data: $data');
+        return data;
+      } else {
+        print('Driving school API response error: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Driving school bilgileri hatası: $e');
+      return null;
     }
   }
 } 

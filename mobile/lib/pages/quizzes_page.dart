@@ -46,22 +46,40 @@ class _QuizzesPageState extends State<QuizzesPage> with TickerProviderStateMixin
       final quizzesData = await ApiService.getQuizzes();
       
       if (quizzesData != null) {
+        // Kullanıcı bilgilerini al
+        final userProfile = await ApiService.getSavedUserProfile();
+        final studentId = userProfile?['id']?.toString() ?? '';
+
+        // Her quiz için progress bilgilerini al
+        final updatedQuizzes = await Future.wait(
+          quizzesData.map((quiz) async {
+            Map<String, dynamic> quizProgress = {};
+            
+            if (studentId.isNotEmpty) {
+              // Quiz progress bilgilerini API'den al
+              quizProgress = await ApiService.getQuizProgress(studentId, quiz['id'].toString()) ?? {};
+            }
+
+            return {
+              'id': quiz['id'],
+              'title': quiz['title'] ?? 'Başlıksız Sınav',
+              'description': quiz['description'] ?? '',
+              'difficulty': _mapDifficulty(quiz['difficulty']),
+              'questions': (quiz['questions'] as List?)?.length ?? quiz['questionCount'] ?? 10,
+              'duration': quiz['duration'] ?? 15,
+              'bestScore': quizProgress['bestScore'] ?? 0,
+              'attempts': quizProgress['attempts'] ?? 0,
+              'color': _getQuizColor(quiz['difficulty']),
+              'icon': _getQuizIcon(quiz['category']),
+              'isCompleted': quizProgress['isCompleted'] ?? false,
+              'category': quiz['category'] ?? 'Genel',
+              'createdAt': quiz['createdAt'],
+            };
+          })
+        );
+
         setState(() {
-          quizzes = quizzesData.map((quiz) => {
-            'id': quiz['id'],
-            'title': quiz['title'] ?? 'Başlıksız Sınav',
-            'description': quiz['description'] ?? '',
-            'difficulty': _mapDifficulty(quiz['difficulty']),
-            'questions': (quiz['questions'] as List?)?.length ?? quiz['questionCount'] ?? 10,
-            'duration': quiz['duration'] ?? 15,
-            'bestScore': 0, // TODO: Progress API'den gelecek
-            'attempts': 0, // TODO: Progress API'den gelecek
-            'color': _getQuizColor(quiz['difficulty']),
-            'icon': _getQuizIcon(quiz['category']),
-            'isCompleted': false, // TODO: Progress API'den gelecek
-            'category': quiz['category'] ?? 'Genel',
-            'createdAt': quiz['createdAt'],
-          }).toList();
+          quizzes = updatedQuizzes;
           isLoading = false;
         });
       } else {
@@ -137,8 +155,6 @@ class _QuizzesPageState extends State<QuizzesPage> with TickerProviderStateMixin
     super.dispose();
   }
 
-
-
   List<Map<String, dynamic>> get filteredQuizzes {
     if (selectedDifficulty == 'Tümü') return quizzes;
     return quizzes.where((quiz) => quiz['difficulty'] == selectedDifficulty).toList();
@@ -212,7 +228,7 @@ class _QuizzesPageState extends State<QuizzesPage> with TickerProviderStateMixin
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const                 Text(
+                const Text(
                   'Sınavlarım',
                   style: TextStyle(
                     color: Colors.white,
@@ -391,7 +407,8 @@ class _QuizzesPageState extends State<QuizzesPage> with TickerProviderStateMixin
   }
 
   Widget _buildQuizCard(Map<String, dynamic> quiz, int index) {
-    final isLocked = !quiz['isCompleted'] && quiz['attempts'] == 0;
+    // Sınavlar varsayılan olarak açık olmalı, sadece özel durumlarda kilitli olmalı
+    final isLocked = false; // Tüm sınavlar açık
     
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -406,103 +423,10 @@ class _QuizzesPageState extends State<QuizzesPage> with TickerProviderStateMixin
               context,
               MaterialPageRoute(
                 builder: (context) => QuizDetailPage(quiz: quiz),
-                    ),
-    );
-  }
-
-  Widget _buildQuizzesContent() {
-    if (isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Sınavlar yükleniyor...'),
-          ],
-        ),
-      );
-    }
-
-    if (errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Sınavlar yüklenemedi',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[600],
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              errorMessage!,
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 14,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: loadQuizzes,
-              child: const Text('Tekrar Dene'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (filteredQuizzes.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.quiz_outlined,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              selectedDifficulty == 'Tümü' ? 'Henüz sınav bulunmuyor' : 'Bu zorlukta sınav bulunmuyor',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Yeni sınavlar eklendiğinde burada görünecek',
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: filteredQuizzes.length,
-      itemBuilder: (context, index) {
-        return _buildQuizCard(filteredQuizzes[index], index);
-      },
-    );
-  }
-},
+            );
+          }
+        },
         child: AnimatedContainer(
           duration: Duration(milliseconds: 300 + (index * 100)),
           decoration: BoxDecoration(

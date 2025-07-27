@@ -98,9 +98,118 @@ class _LearningPageState extends State<LearningPage> {
       final currentContent = courseContents[currentIndex];
       final contentType = currentContent['contentType'] ?? 0;
       
-      if (contentType == 0) { // Video
-        _initializeVideo(currentContent['contentUrl']);
+      if (contentType == 0) {
+        // Video içerik
+        final videoUrl = currentContent['contentUrl'];
+        if (videoUrl != null && videoUrl.isNotEmpty) {
+          final fullUrl = ApiService.getFullMediaUrl(videoUrl);
+          _initializeVideoPlayer(fullUrl);
+        } else {
+          // Video URL yoksa hata göster
+          setState(() {
+            isVideoLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Video dosyası bulunamadı'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } else {
+        // Text veya quiz içerik
+        setState(() {
+          isVideoLoading = false;
+        });
       }
+    }
+  }
+
+  void _initializeVideoPlayer(String videoUrl) {
+    setState(() {
+      isVideoLoading = true;
+    });
+
+    try {
+      _videoController = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+      _videoController!.addListener(_videoListener);
+      _videoController!.initialize().then((_) {
+        setState(() {
+          isVideoLoading = false;
+        });
+        
+        // Video başladığında progress tracking'i başlat
+        _startProgressTracking();
+      }).catchError((error) {
+        print('Video yükleme hatası: $error');
+        setState(() {
+          isVideoLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Video yüklenirken hata oluştu: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      });
+    } catch (e) {
+      print('Video player başlatma hatası: $e');
+      setState(() {
+        isVideoLoading = false;
+      });
+    }
+  }
+
+  void _startProgressTracking() {
+    // Progress tracking başlat
+    _updateProgress();
+  }
+
+  void _updateProgress() async {
+    if (_videoController != null && _videoController!.value.isInitialized) {
+      final position = _videoController!.value.position;
+      final duration = _videoController!.value.duration;
+      
+      if (duration.inSeconds > 0) {
+        final progressPercent = (position.inSeconds / duration.inSeconds * 100).round();
+        
+        setState(() {
+          progress = progressPercent / 100.0;
+        });
+
+        // Progress'i API'ye gönder (her 10 saniyede bir)
+        if (position.inSeconds % 10 == 0) {
+          await _saveProgress(progressPercent, position.inSeconds);
+        }
+      }
+    }
+  }
+
+  Future<void> _saveProgress(int progressPercent, int timeSpent) async {
+    try {
+      // Kullanıcı bilgilerini al
+      final userProfile = await ApiService.getSavedUserProfile();
+      final studentId = userProfile?['id']?.toString() ?? '';
+      
+      if (studentId.isNotEmpty && courseContents.isNotEmpty) {
+        final currentContent = courseContents[currentIndex];
+        final courseContentId = currentContent['id']?.toString() ?? '';
+        
+        if (courseContentId.isNotEmpty) {
+          // Progress'i API'ye kaydet
+          await ApiService.updateProgress(studentId, courseContentId, progressPercent, timeSpent);
+          
+          // Video tamamlandıysa dersi tamamla olarak işaretle
+          if (progressPercent >= 90) {
+            await ApiService.completeLesson(studentId, courseContentId);
+            setState(() {
+              isCompleted = true;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      print('Progress kaydetme hatası: $e');
     }
   }
 
@@ -183,7 +292,7 @@ class _LearningPageState extends State<LearningPage> {
           setState(() {
             isVideoLoading = false;
           });
-          _createMockVideo();
+          // Mock video kaldırıldı
         }
       }
     } else {
@@ -227,27 +336,21 @@ class _LearningPageState extends State<LearningPage> {
           setState(() {
             isVideoLoading = false;
           });
-          _createMockVideo();
+          // Mock video kaldırıldı
         }
       });
     } catch (e) {
-      print('❌ Demo video controller oluşturma hatası: $e');
-      if (mounted) {
-        setState(() {
-          isVideoLoading = false;
-        });
-        _createMockVideo();
-      }
+              print('❌ Demo video controller oluşturma hatası: $e');
+        if (mounted) {
+          setState(() {
+            isVideoLoading = false;
+          });
+          // Mock video kaldırıldı
+        }
     }
   }
 
-  void _createMockVideo() {
-    // Mock video için başlangıç durumu
-    setState(() {
-      progress = 0.0;
-    });
-    print('Mock video modu - Play butonuna basın');
-  }
+  // Mock video metodu kaldırıldı - gerçek video player kullanılıyor
 
   ContentType _getContentType() {
     if (courseContents.isEmpty) return ContentType.video;

@@ -72,6 +72,66 @@ public class DrivingSchoolsController : ControllerBase
         return Ok(school);
     }
 
+    [HttpGet("student")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> GetStudentSchool()
+    {
+        try
+        {
+            // JWT token'dan user ID'yi al
+            var userIdClaim = User.FindFirst("UserId");
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return BadRequest("User ID bulunamadı");
+            }
+
+            // User'ı veritabanından bul
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+            {
+                return NotFound("Kullanıcı bulunamadı");
+            }
+
+            // Driving school'u bul
+            var school = await _db.DrivingSchools.FirstOrDefaultAsync(s => s.Id == user.DrivingSchoolId);
+            if (school == null)
+            {
+                // Test verisi döndür
+                return Ok(new
+                {
+                    id = Guid.NewGuid(),
+                    name = "ESEN SÜRÜCÜ KURSU",
+                    address = "Merkez Mahallesi, Atatürk Caddesi No:123, İstanbul",
+                    phone = "+90 212 555 0123",
+                    email = "info@esensurucukursu.com",
+                    logoUrl = "https://img.icons8.com/color/96/000000/car.png",
+                    taxNumber = "1234567890",
+                    slogan = "Güvenli sürücüler yetiştiriyoruz",
+                    description = "Türkiye'nin en güvenilir sürücü kursu",
+                    createdAt = DateTime.Now.AddYears(-5)
+                });
+            }
+
+            return Ok(new
+            {
+                id = school.Id,
+                name = school.Name,
+                address = school.Address,
+                phone = school.Phone,
+                email = school.Email,
+                logoUrl = school.LogoUrl,
+                taxNumber = school.TaxNumber,
+                slogan = "Güvenli sürücüler yetiştiriyoruz",
+                description = "Türkiye'nin en güvenilir sürücü kursu",
+                createdAt = school.CreatedAt
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Sürücü kursu bilgileri alınırken hata oluştu: {ex.Message}");
+        }
+    }
+
     // DTO ekle
     public class DrivingSchoolUpdateRequest
     {

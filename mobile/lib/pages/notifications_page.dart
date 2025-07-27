@@ -47,7 +47,7 @@ class _NotificationsPageState extends State<NotificationsPage> with TickerProvid
 
       final notificationsData = await ApiService.getNotifications();
       
-      if (notificationsData != null) {
+      if (notificationsData != null && notificationsData.isNotEmpty) {
         setState(() {
           notifications = notificationsData.map((notification) => {
             'id': notification['id'],
@@ -62,7 +62,11 @@ class _NotificationsPageState extends State<NotificationsPage> with TickerProvid
           isLoading = false;
         });
       } else {
-        throw Exception('Bildirimler yüklenemedi');
+        setState(() {
+          notifications = [];
+          isLoading = false;
+          errorMessage = 'Henüz bildirim bulunmuyor';
+        });
       }
     } catch (e) {
       setState(() {

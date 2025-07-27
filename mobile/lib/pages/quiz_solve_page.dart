@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import '../services/api_service.dart';
+import 'package:video_player/video_player.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class QuizSolvePage extends StatefulWidget {
   final Map<String, dynamic> quiz;
@@ -17,75 +20,27 @@ class _QuizSolvePageState extends State<QuizSolvePage> {
   int totalSeconds = 0;
   Timer? timer;
   bool isCompleted = false;
+  bool isLoading = true;
+  String? errorMessage;
 
-  // Örnek sorular
-  final List<Map<String, dynamic>> questions = [
-    {
-      'question': 'Trafik ışığında sarı ışık ne anlama gelir?',
-      'options': [
-        'Hızlanabilirsiniz',
-        'Dikkatli geçebilirsiniz', 
-        'Durmanız gerekir',
-        'Geri gidebilirsiniz'
-      ],
-      'correctAnswer': 2,
-      'image': null,
-    },
-    {
-      'question': 'Yaşlılara yol verme zorunluluğu hangi durumda vardır?',
-      'options': [
-        'Sadece yaya geçidinde',
-        'Her durumda',
-        'Sadece park yerinde',
-        'Hiçbir zaman'
-      ],
-      'correctAnswer': 1,
-      'image': null,
-    },
-    {
-      'question': 'Şehir içinde maksimum hız limiti kaç km/saat\'tir?',
-      'options': [
-        '30 km/s',
-        '50 km/s', 
-        '70 km/s',
-        '90 km/s'
-      ],
-      'correctAnswer': 1,
-      'image': null,
-    },
-    {
-      'question': 'Kırmızı ışıkta geçmek için ne yapmalısınız?',
-      'options': [
-        'Hızla geçerim',
-        'Durur beklerim',
-        'Kornaya basarım',
-        'Sağa dönebilirim'
-      ],
-      'correctAnswer': 1,
-      'image': null,
-    },
-    {
-      'question': 'Alkollü araç kullanmak yasak mıdır?',
-      'options': [
-        'Hayır, az miktarda içilebilir',
-        'Evet, tamamen yasaktır',
-        'Sadece gece yasaktır',
-        'Sadece otoyolda yasaktır'
-      ],
-      'correctAnswer': 1,
-      'image': null,
-    },
-  ];
+  // Video player için
+  VideoPlayerController? _videoController;
+  bool _isVideoInitialized = false;
+
+  // API'den gelecek sorular
+  List<Map<String, dynamic>> questions = [];
 
   @override
   void initState() {
     super.initState();
+    _loadQuestions();
     _startTimer();
   }
 
   @override
   void dispose() {
     timer?.cancel();
+    _videoController?.dispose();
     super.dispose();
   }
 
@@ -106,6 +61,12 @@ class _QuizSolvePageState extends State<QuizSolvePage> {
   void _nextQuestion() {
     if (selectedAnswer == null) return;
 
+    // Mevcut videoyu durdur
+    _videoController?.pause();
+    _videoController?.dispose();
+    _videoController = null;
+    _isVideoInitialized = false;
+
     // Cevabı kontrol et
     if (selectedAnswer == questions[currentQuestionIndex]['correctAnswer']) {
       correctAnswers++;
@@ -116,6 +77,9 @@ class _QuizSolvePageState extends State<QuizSolvePage> {
         currentQuestionIndex++;
         selectedAnswer = null;
       });
+      
+      // Yeni sorunun medyasını yükle
+      _loadCurrentQuestionMedia();
     } else {
       _completeQuiz();
     }
@@ -123,6 +87,13 @@ class _QuizSolvePageState extends State<QuizSolvePage> {
 
   void _completeQuiz() {
     timer?.cancel();
+    
+    // Videoyu durdur
+    _videoController?.pause();
+    _videoController?.dispose();
+    _videoController = null;
+    _isVideoInitialized = false;
+    
     setState(() {
       isCompleted = true;
     });
@@ -135,17 +106,239 @@ class _QuizSolvePageState extends State<QuizSolvePage> {
   }
 
   double get progressPercentage {
+    if (questions.isEmpty) return 0.0;
     return (currentQuestionIndex + 1) / questions.length;
   }
 
   double get scorePercentage {
+    if (questions.isEmpty) return 0.0;
     return (correctAnswers / questions.length) * 100;
+  }
+
+  List<Map<String, dynamic>> _getDefaultQuestions() {
+    return [
+      {
+        'question': 'Trafik ışığında sarı ışık ne anlama gelir?',
+        'options': [
+          'Hızlanabilirsiniz',
+          'Dikkatli geçebilirsiniz', 
+          'Durmanız gerekir',
+          'Geri gidebilirsiniz'
+        ],
+        'correctAnswer': 2,
+        'image': null,
+      },
+      {
+        'question': 'Yaşlılara yol verme zorunluluğu hangi durumda vardır?',
+        'options': [
+          'Sadece yaya geçidinde',
+          'Her durumda',
+          'Sadece park yerinde',
+          'Hiçbir zaman'
+        ],
+        'correctAnswer': 1,
+        'image': null,
+      },
+      {
+        'question': 'Şehir içinde maksimum hız limiti kaç km/saat\'tir?',
+        'options': [
+          '30 km/s',
+          '50 km/s', 
+          '70 km/s',
+          '90 km/s'
+        ],
+        'correctAnswer': 1,
+        'image': null,
+      },
+      {
+        'question': 'Kırmızı ışıkta geçmek için ne yapmalısınız?',
+        'options': [
+          'Hızla geçerim',
+          'Durur beklerim',
+          'Kornaya basarım',
+          'Sağa dönebilirim'
+        ],
+        'correctAnswer': 1,
+        'image': null,
+      },
+      {
+        'question': 'Alkollü araç kullanmak yasak mıdır?',
+        'options': [
+          'Hayır, az miktarda içilebilir',
+          'Evet, tamamen yasaktır',
+          'Sadece gece yasaktır',
+          'Sadece otoyolda yasaktır'
+        ],
+        'correctAnswer': 1,
+        'image': null,
+      },
+    ];
+  }
+
+  Future<void> _loadQuestions() async {
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+
+      final quizId = widget.quiz['id']?.toString() ?? '';
+      if (quizId.isNotEmpty) {
+        // Quiz sorularını API'den al
+        final questionsData = await ApiService.getQuizQuestions(quizId);
+        
+        if (questionsData != null && questionsData.isNotEmpty) {
+          // API'den gelen veriyi mobile formatına dönüştür
+          final convertedQuestions = questionsData.map((apiQuestion) {
+            final options = (apiQuestion['options'] as List?) ?? [];
+            final correctAnswerIndex = options.indexWhere((option) => option['isCorrect'] == true);
+            
+            return {
+              'question': apiQuestion['questionText'] ?? apiQuestion['question'] ?? 'Soru bulunamadı',
+              'options': options.map((option) => option['optionText'] ?? option['text'] ?? '').toList(),
+              'correctAnswer': correctAnswerIndex >= 0 ? correctAnswerIndex : 0,
+              'image': apiQuestion['mediaUrl'] ?? null,
+            };
+          }).toList();
+
+          setState(() {
+            questions = convertedQuestions;
+            isLoading = false;
+          });
+          
+          // İlk sorunun medyasını yükle
+          if (convertedQuestions.isNotEmpty) {
+            _loadCurrentQuestionMedia();
+          }
+        } else {
+          // API'den soru gelmezse varsayılan soruları kullan
+          setState(() {
+            questions = _getDefaultQuestions();
+            isLoading = false;
+          });
+        }
+      } else {
+        setState(() {
+          questions = _getDefaultQuestions();
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Quiz soruları yükleme hatası: $e');
+      setState(() {
+        questions = _getDefaultQuestions();
+        isLoading = false;
+        errorMessage = 'Sorular yüklenirken hata oluştu';
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (isCompleted) {
       return _buildResultScreen();
+    }
+
+    if (isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.grey[50],
+        appBar: AppBar(
+          title: Text('${widget.quiz['title']}'),
+          backgroundColor: Colors.blue[600],
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Sorular yükleniyor...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (errorMessage != null) {
+      return Scaffold(
+        backgroundColor: Colors.grey[50],
+        appBar: AppBar(
+          title: Text('${widget.quiz['title']}'),
+          backgroundColor: Colors.blue[600],
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Hata',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                errorMessage!,
+                style: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _loadQuestions,
+                child: const Text('Tekrar Dene'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (questions.isEmpty) {
+      return Scaffold(
+        backgroundColor: Colors.grey[50],
+        appBar: AppBar(
+          title: Text('${widget.quiz['title']}'),
+          backgroundColor: Colors.blue[600],
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.quiz_outlined,
+                size: 64,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Bu sınav için henüz soru bulunmuyor',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return Scaffold(
@@ -286,25 +479,135 @@ class _QuizSolvePageState extends State<QuizSolvePage> {
             textAlign: TextAlign.center,
           ),
           
-          // Soru görseli (varsa)
-          if (question['image'] != null) ...[
+          // Soru medyası (görsel veya video)
+          if (question['image'] != null && question['image'].toString().isNotEmpty) ...[
             const SizedBox(height: 20),
-            Container(
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.image,
-                  size: 40,
-                  color: Colors.grey,
-                ),
-              ),
-            ),
+            _buildMediaWidget(question['image']),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildMediaWidget(String mediaUrl) {
+    final mediaType = _getMediaType(mediaUrl);
+    
+    if (mediaType == 'video') {
+      return _buildVideoWidget(mediaUrl);
+    } else {
+      return _buildImageWidget(mediaUrl);
+    }
+  }
+
+  String _getMediaType(String url) {
+    final lowerUrl = url.toLowerCase();
+    if (lowerUrl.contains('.mp4') || lowerUrl.contains('.avi') || lowerUrl.contains('.mov')) {
+      return 'video';
+    } else {
+      return 'image';
+    }
+  }
+
+  Widget _buildImageWidget(String imageUrl) {
+    return Container(
+      height: 200,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              color: Colors.grey[100],
+              child: Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                      : null,
+                ),
+              ),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              color: Colors.grey[100],
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.image_not_supported,
+                      size: 40,
+                      color: Colors.grey,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Görsel yüklenemedi',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoWidget(String videoUrl) {
+    return Container(
+      height: 200,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            _isVideoInitialized && _videoController != null
+                ? AspectRatio(
+                    aspectRatio: _videoController!.value.aspectRatio,
+                    child: VideoPlayer(_videoController!),
+                  )
+                : Container(
+                    color: Colors.grey[100],
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+            // Video kontrol butonu
+            if (_isVideoInitialized && _videoController != null)
+              FloatingActionButton(
+                onPressed: () {
+                  setState(() {
+                    if (_videoController!.value.isPlaying) {
+                      _videoController!.pause();
+                    } else {
+                      _videoController!.play();
+                    }
+                  });
+                },
+                backgroundColor: Colors.black.withOpacity(0.5),
+                child: Icon(
+                  _videoController!.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                  color: Colors.white,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -653,4 +956,40 @@ class _QuizSolvePageState extends State<QuizSolvePage> {
       },
     );
   }
-} 
+
+  void _initializeVideoPlayer(String videoUrl) async {
+    try {
+      _videoController?.dispose();
+      _videoController = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+      
+      await _videoController!.initialize();
+      
+      setState(() {
+        _isVideoInitialized = true;
+      });
+      
+      // Video'yu otomatik başlatma - kullanıcı kontrol etsin
+      // _videoController!.play();
+    } catch (e) {
+      print('Video yükleme hatası: $e');
+      setState(() {
+        _isVideoInitialized = false;
+      });
+    }
+  }
+
+  void _loadCurrentQuestionMedia() {
+    if (questions.isNotEmpty && currentQuestionIndex < questions.length) {
+      final question = questions[currentQuestionIndex];
+      final mediaUrl = question['image'];
+      
+      if (mediaUrl != null && mediaUrl.toString().isNotEmpty) {
+        final mediaType = _getMediaType(mediaUrl);
+        
+        if (mediaType == 'video') {
+          _initializeVideoPlayer(mediaUrl);
+        }
+      }
+    }
+  }
+}

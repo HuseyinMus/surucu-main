@@ -56,41 +56,67 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> LoginWithTcAsync(TcLoginRequest request)
     {
-        // TC numarası ile kullanıcıyı bul
+        Console.WriteLine($"TC Login attempt for TC: {request.TcNumber}");
+        
+        // Önce Students tablosundan TC ile ara
+        var student = await _db.Students
+            .Include(s => s.User)
+            .FirstOrDefaultAsync(s => s.TCNumber == request.TcNumber);
+
+        if (student != null && student.User != null && student.User.IsActive)
+        {
+            Console.WriteLine($"Student found: ID={student.Id}, User ID={student.User.Id}, Name={student.User.FullName}");
+            
+            Console.WriteLine("Generating JWT token for student...");
+            var token = GenerateJwtToken(student.User);
+            Console.WriteLine("JWT token generated successfully");
+
+            return new AuthResponse
+            {
+                Token = token,
+                UserId = student.User.Id,
+                FullName = student.User.FullName,
+                Email = student.User.Email,
+                Role = student.User.Role.ToString(),
+                DrivingSchoolId = student.User.DrivingSchoolId
+            };
+        }
+
+        // Eğer öğrenci bulunamadıysa, Users tablosundan TC ile ara (eğitmenler için)
         var user = await _db.Users
             .Include(u => u.Instructor)
             .FirstOrDefaultAsync(u => u.TcNumber == request.TcNumber);
 
-        if (user == null || !user.IsActive)
+        Console.WriteLine($"User found: {user != null}");
+        
+        if (user == null)
+        {
+            Console.WriteLine("User not found in database");
             throw new Exception("TC kimlik numarası bulunamadı.");
-
-        // Sadece eğitmenler TC ile giriş yapabilir
-        if (user.Role != UserRole.Instructor)
-            throw new Exception("Bu giriş yöntemi sadece eğitmenler için geçerlidir.");
-
-        // Şifre kontrolü (eğitmenler için basit şifre sistemi)
-        // Gerçek uygulamada daha güvenli bir sistem kullanılmalı
-        if (string.IsNullOrEmpty(user.PasswordHash))
-        {
-            // İlk giriş - TC numarasının son 4 hanesi şifre olarak kullanılır
-            var defaultPassword = user.TcNumber!.Substring(7, 4);
-            if (request.Password != defaultPassword)
-                throw new Exception("Geçersiz şifre. Varsayılan şifre: TC numaranızın son 4 hanesi");
-        }
-        else
-        {
-            // Normal şifre kontrolü
-            var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<User>();
-            var result = hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
-            
-            if (result == Microsoft.AspNetCore.Identity.PasswordVerificationResult.Failed)
-                throw new Exception("Geçersiz şifre");
         }
 
-        var token = GenerateJwtToken(user);
+        Console.WriteLine($"User details: ID={user.Id}, Name={user.FullName}, Role={user.Role}, IsActive={user.IsActive}");
+
+        if (!user.IsActive)
+        {
+            Console.WriteLine("User is not active");
+            throw new Exception("Kullanıcı aktif değil.");
+        }
+
+        // Öğrenci ve eğitmenler TC ile giriş yapabilir
+        if (user.Role != UserRole.Student && user.Role != UserRole.Instructor)
+        {
+            Console.WriteLine($"User role {user.Role} is not allowed for TC login");
+            throw new Exception("Bu giriş yöntemi sadece öğrenci ve eğitmenler için geçerlidir.");
+        }
+
+        Console.WriteLine("Generating JWT token...");
+        var instructorToken = GenerateJwtToken(user);
+        Console.WriteLine("JWT token generated successfully");
+
         return new AuthResponse
         {
-            Token = token,
+            Token = instructorToken,
             UserId = user.Id,
             FullName = user.FullName,
             Email = user.Email,
@@ -161,7 +187,8 @@ public class AuthService : IAuthService
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(ClaimTypes.Role, user.Role.ToString()),
             new Claim("FullName", user.FullName),
-            new Claim("DrivingSchoolId", user.DrivingSchoolId.ToString())
+            new Claim("DrivingSchoolId", user.DrivingSchoolId.ToString()),
+            new Claim("UserId", user.Id.ToString()) // UserId claim'i eklendi
         };
         var token = new JwtSecurityToken(
             issuer: jwtSettings["Issuer"],

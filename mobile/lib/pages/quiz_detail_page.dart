@@ -524,7 +524,8 @@ class _QuizDetailPageState extends State<QuizDetailPage> with TickerProviderStat
 
   Widget _buildStartButton() {
     final hasAttempts = widget.quiz['attempts'] > 0;
-    final isLocked = !widget.quiz['isCompleted'] && widget.quiz['attempts'] == 0;
+    // Sınavlar varsayılan olarak açık olmalı, sadece özel durumlarda kilitli olmalı
+    final isLocked = false; // Tüm sınavlar açık
     
     return Container(
       padding: const EdgeInsets.all(16),

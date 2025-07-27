@@ -51,9 +51,37 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
         final detail = await ApiService.getCourseDetail(courseId);
         
         if (detail != null) {
+          // Kullanıcı bilgilerini al
+          final userProfile = await ApiService.getSavedUserProfile();
+          final studentId = userProfile?['id']?.toString() ?? '';
+
+          // Progress verilerini API'den al
+          List<Map<String, dynamic>> progressData = [];
+          if (studentId.isNotEmpty) {
+            progressData = await ApiService.getCourseProgress(studentId, courseId.toString()) ?? [];
+          }
+
+          // Progress verilerini course contents ile birleştir
+          final contents = detail['courseContents'] ?? [];
+          final updatedContents = contents.map((content) {
+            final progress = progressData.firstWhere(
+              (p) => p['courseContentId'] == content['id'],
+              orElse: () => {},
+            );
+
+            return {
+              ...content,
+              'isCompleted': progress['isCompleted'] ?? false,
+              'progress': progress['progress'] ?? 0,
+              'timeSpent': progress['timeSpent'] ?? 0,
+              'completedAt': progress['completedAt'],
+              'attempts': progress['attempts'] ?? 0,
+            };
+          }).toList();
+
           setState(() {
             courseDetail = detail;
-            lessons = _mapCourseContents(detail['courseContents'] ?? []);
+            lessons = _processCourseContents(updatedContents);
             isLoading = false;
           });
         } else {
@@ -71,17 +99,17 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
     }
   }
 
-  List<Map<String, dynamic>> _mapCourseContents(List<dynamic> contents) {
+  List<Map<String, dynamic>> _processCourseContents(List<dynamic> contents) {
     return contents.asMap().entries.map((entry) {
-      int index = entry.key;
-      var content = entry.value;
+      final index = entry.key;
+      final content = entry.value;
       
       return {
         'id': content['id'],
         'title': content['title'] ?? 'Başlıksız İçerik',
         'description': content['description'] ?? '',
         'duration': _formatDuration(content['duration']),
-        'isCompleted': false, // TODO: Progress API'den gelecek
+        'isCompleted': content['isCompleted'] ?? false, // API'den gelen veri kullanılıyor
         'isLocked': index > 2, // İlk 3 ders açık, diğerleri kilitli
         'type': _mapContentType(content['contentType']),
         'contentUrl': content['contentUrl'],

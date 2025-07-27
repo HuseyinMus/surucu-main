@@ -29,8 +29,10 @@ public class QuizzesController : ControllerBase
         if (claim != null && Guid.TryParse(claim, out var parsedId))
             drivingSchoolId = parsedId;
         
-        // GEÇİCİ: Tüm quiz'leri döndür (DrivingSchoolId filtresi kaldırıldı)
-        var quizzes = await _db.Quizzes.ToListAsync();
+        // DrivingSchoolId'ye göre filtrele
+        var quizzes = await _db.Quizzes
+            .Where(q => q.DrivingSchoolId == drivingSchoolId)
+            .ToListAsync();
         
         // Test verileri ekle (eğer hiç quiz yoksa)
         if (!quizzes.Any())
@@ -137,12 +139,12 @@ public class QuizzesController : ControllerBase
     }
 
     [HttpGet("{quizId}/questions")]
-    [Authorize(Roles = "Admin,Instructor")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetQuestions([FromRoute] Guid quizId)
     {
         try
         {
-            var questions = await _db.QuizQuestions
+            var dbQuestions = await _db.QuizQuestions
                 .Where(q => q.QuizId == quizId)
                 .Select(q => new
                 {
@@ -163,7 +165,92 @@ public class QuizzesController : ControllerBase
                 })
                 .ToListAsync();
 
-            return Ok(questions);
+            // Eğer soru yoksa test soruları döndür
+            if (!dbQuestions.Any())
+            {
+                var testQuestions = new List<object>
+                {
+                    new
+                    {
+                        Id = Guid.NewGuid(),
+                        QuestionText = "Trafik ışığında sarı ışık ne anlama gelir?",
+                        QuestionType = "MultipleChoice",
+                        MediaType = "Image",
+                        MediaUrl = "https://picsum.photos/400/300?random=1",
+                        options = new List<object>
+                        {
+                            new { Id = Guid.NewGuid(), OptionText = "Hızlanabilirsiniz", IsCorrect = false },
+                            new { Id = Guid.NewGuid(), OptionText = "Dikkatli geçebilirsiniz", IsCorrect = false },
+                            new { Id = Guid.NewGuid(), OptionText = "Durmanız gerekir", IsCorrect = true },
+                            new { Id = Guid.NewGuid(), OptionText = "Geri gidebilirsiniz", IsCorrect = false }
+                        }
+                    },
+                    new
+                    {
+                        Id = Guid.NewGuid(),
+                        QuestionText = "Yaşlılara yol verme zorunluluğu hangi durumda vardır?",
+                        QuestionType = "MultipleChoice",
+                        MediaType = "Video",
+                        MediaUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                        options = new List<object>
+                        {
+                            new { Id = Guid.NewGuid(), OptionText = "Sadece yaya geçidinde", IsCorrect = false },
+                            new { Id = Guid.NewGuid(), OptionText = "Her durumda", IsCorrect = true },
+                            new { Id = Guid.NewGuid(), OptionText = "Sadece park yerinde", IsCorrect = false },
+                            new { Id = Guid.NewGuid(), OptionText = "Hiçbir zaman", IsCorrect = false }
+                        }
+                    },
+                    new
+                    {
+                        Id = Guid.NewGuid(),
+                        QuestionText = "Şehir içinde maksimum hız limiti kaç km/saat'tir?",
+                        QuestionType = "MultipleChoice",
+                        MediaType = "Image",
+                        MediaUrl = "https://picsum.photos/400/300?random=2",
+                        options = new List<object>
+                        {
+                            new { Id = Guid.NewGuid(), OptionText = "30 km/s", IsCorrect = false },
+                            new { Id = Guid.NewGuid(), OptionText = "50 km/s", IsCorrect = true },
+                            new { Id = Guid.NewGuid(), OptionText = "70 km/s", IsCorrect = false },
+                            new { Id = Guid.NewGuid(), OptionText = "90 km/s", IsCorrect = false }
+                        }
+                    },
+                    new
+                    {
+                        Id = Guid.NewGuid(),
+                        QuestionText = "Kırmızı ışıkta geçmek için ne yapmalısınız?",
+                        QuestionType = "MultipleChoice",
+                        MediaType = "None",
+                        MediaUrl = "",
+                        options = new List<object>
+                        {
+                            new { Id = Guid.NewGuid(), OptionText = "Hızla geçerim", IsCorrect = false },
+                            new { Id = Guid.NewGuid(), OptionText = "Durur beklerim", IsCorrect = true },
+                            new { Id = Guid.NewGuid(), OptionText = "Kornaya basarım", IsCorrect = false },
+                            new { Id = Guid.NewGuid(), OptionText = "Sağa dönebilirim", IsCorrect = false }
+                        }
+                    },
+                    new
+                    {
+                        Id = Guid.NewGuid(),
+                        QuestionText = "Alkollü araç kullanmak yasak mıdır?",
+                        QuestionType = "MultipleChoice",
+                        MediaType = "Image",
+                        MediaUrl = "https://picsum.photos/400/300?random=3",
+                        options = new List<object>
+                        {
+                            new { Id = Guid.NewGuid(), OptionText = "Hayır, az miktarda içilebilir", IsCorrect = false },
+                            new { Id = Guid.NewGuid(), OptionText = "Evet, tamamen yasaktır", IsCorrect = true },
+                            new { Id = Guid.NewGuid(), OptionText = "Sadece gece yasaktır", IsCorrect = false },
+                            new { Id = Guid.NewGuid(), OptionText = "Sadece otoyolda yasaktır", IsCorrect = false }
+                        }
+                    }
+                };
+
+                return Ok(testQuestions);
+            }
+
+            return Ok(dbQuestions);
         }
         catch (Exception ex)
         {

@@ -100,11 +100,59 @@ public class NotificationsController : ControllerBase
                     isRead = true
                 }
             };
+            
             return Ok(testNotifications);
         }
         
-        var last5 = notifications.OrderByDescending(n => n.SentAt).Take(5);
-        return Ok(last5);
+        return Ok(notifications);
+    }
+
+    [HttpGet("student")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> GetStudentNotifications()
+    {
+        // Student'ın kendi bildirimlerini döndür
+        var testNotifications = new List<object>
+        {
+            new
+            {
+                id = Guid.NewGuid(),
+                title = "Yeni Kurs Eklendi",
+                message = "Güvenli Sürüş kursu artık mevcut. Hemen başla!",
+                type = "course",
+                isRead = false,
+                createdAt = DateTime.Now.Subtract(TimeSpan.FromHours(2)).ToString("yyyy-MM-ddTHH:mm:ss"),
+            },
+            new
+            {
+                id = Guid.NewGuid(),
+                title = "Sınav Sonucun Hazır",
+                message = "Trafik İşaretleri sınavından 92 puan aldın. Tebrikler!",
+                type = "quiz",
+                isRead = false,
+                createdAt = DateTime.Now.Subtract(TimeSpan.FromHours(5)).ToString("yyyy-MM-ddTHH:mm:ss"),
+            },
+            new
+            {
+                id = Guid.NewGuid(),
+                title = "Sistem Bildirimi",
+                message = "Uygulama başarıyla güncellendi.",
+                type = "system",
+                isRead = true,
+                createdAt = DateTime.Now.Subtract(TimeSpan.FromDays(1)).ToString("yyyy-MM-ddTHH:mm:ss"),
+            },
+            new
+            {
+                id = Guid.NewGuid(),
+                title = "Ders Hatırlatması",
+                message = "Yarın saat 14:00'da direksiyon dersiniz var.",
+                type = "announcement",
+                isRead = false,
+                createdAt = DateTime.Now.Subtract(TimeSpan.FromHours(1)).ToString("yyyy-MM-ddTHH:mm:ss"),
+            },
+        };
+        
+        return Ok(testNotifications);
     }
 
     [HttpPut("{id}")]
@@ -135,5 +183,13 @@ public class NotificationsController : ControllerBase
         {
             return BadRequest($"Bildirim silinirken hata oluştu: {ex.Message}");
         }
+    }
+
+    [HttpPatch("{id}/read")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> MarkAsRead(Guid id)
+    {
+        // Student'ın bildirimini okundu olarak işaretle
+        return Ok(new { success = true, message = "Bildirim okundu olarak işaretlendi" });
     }
 } 

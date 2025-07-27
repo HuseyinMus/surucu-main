@@ -21,6 +21,8 @@ class _LoginPageState extends State<LoginPage> {
   void _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
+    print('Giriş denemesi - TC: ${_tcController.text}');
+
     // Loading göster
     showDialog(
       context: context,
@@ -38,11 +40,13 @@ class _LoginPageState extends State<LoginPage> {
       if (context.mounted) Navigator.pop(context);
       
       if (result != null) {
+        print('Giriş başarılı: $result');
         // Başarılı giriş
         if (context.mounted) {
           Navigator.of(context).pushReplacementNamed('/dashboard');
         }
       } else {
+        print('Giriş başarısız - result null');
         // Hatalı giriş
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -54,25 +58,24 @@ class _LoginPageState extends State<LoginPage> {
         }
       }
     } catch (e) {
-      // API bağlantı hatası - mock data ile devam et
+      print('Giriş hatası: $e');
+      // API bağlantı hatası
       if (context.mounted) Navigator.pop(context);
       
-      if (_tcController.text == "12345678901") {
-        if (context.mounted) {
-          Navigator.of(context).pushReplacementNamed('/dashboard');
-        }
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Backend bağlantısı yok - Test modunda devam ediliyor'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Giriş yapılırken hata oluştu: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
+
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -154,11 +157,9 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 
-
-                
                 const SizedBox(height: 40),
                 
-                // Giriş butonu
+                // Giriş Yap Butonu
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -170,7 +171,6 @@ class _LoginPageState extends State<LoginPage> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      elevation: 2,
                     ),
                     child: const Text(
                       'Giriş Yap',
@@ -184,31 +184,31 @@ class _LoginPageState extends State<LoginPage> {
                 
                 const SizedBox(height: 30),
                 
-                // Test bilgisi
+                // Bilgi kutusu
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.yellow[50],
+                    color: Colors.blue[50],
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.yellow[300]!),
+                    border: Border.all(color: Colors.blue[300]!),
                   ),
                   child: Column(
                     children: [
                       Text(
-                        'Test için:',
+                        'Hoş Geldiniz!',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.orange[700],
+                          color: Colors.blue[700],
                         ),
                       ),
                       const SizedBox(height: 4),
-                                             Text(
-                         'TC: 12345678901',
-                         textAlign: TextAlign.center,
-                         style: TextStyle(
-                           color: Colors.orange[700],
-                         ),
-                       ),
+                      Text(
+                        'TC kimlik numaranız ile giriş yapabilirsiniz.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.blue[700],
+                        ),
+                      ),
                     ],
                   ),
                 ),

@@ -41,42 +41,42 @@ public class CoursesController : ControllerBase
         return Ok(course);
     }
 
-    [HttpPost("upload-media")]
-    [AllowAnonymous]
-    public async Task<IActionResult> UploadMedia([FromForm] IFormFile? video, [FromForm] IFormFile? image, [FromForm] IFormFile? pdf)
-    {
-        var uploadRoot = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
-        if (!Directory.Exists(uploadRoot)) Directory.CreateDirectory(uploadRoot);
-        string? videoUrl = null, imageUrl = null, pdfUrl = null;
-        if (video != null)
-        {
-            var ext = Path.GetExtension(video.FileName);
-            var fileName = $"video_{Guid.NewGuid()}{ext}";
-            var filePath = Path.Combine(uploadRoot, fileName);
-            using (var stream = new FileStream(filePath, FileMode.Create))
-                await video.CopyToAsync(stream);
-            videoUrl = $"/uploads/{fileName}";
-        }
-        if (image != null)
-        {
-            var ext = Path.GetExtension(image.FileName);
-            var fileName = $"image_{Guid.NewGuid()}{ext}";
-            var filePath = Path.Combine(uploadRoot, fileName);
-            using (var stream = new FileStream(filePath, FileMode.Create))
-                await image.CopyToAsync(stream);
-            imageUrl = $"/uploads/{fileName}";
-        }
-        if (pdf != null)
-        {
-            var ext = Path.GetExtension(pdf.FileName);
-            var fileName = $"pdf_{Guid.NewGuid()}{ext}";
-            var filePath = Path.Combine(uploadRoot, fileName);
-            using (var stream = new FileStream(filePath, FileMode.Create))
-                await pdf.CopyToAsync(stream);
-            pdfUrl = $"/uploads/{fileName}";
-        }
-        return Ok(new { videoUrl, imageUrl, pdfUrl });
-    }
+    // [HttpPost("upload-media")]
+    // [AllowAnonymous]
+    // public async Task<IActionResult> UploadMedia([FromForm] IFormFile? video, [FromForm] IFormFile? image, [FromForm] IFormFile? pdf)
+    // {
+    //     var uploadRoot = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+    //     if (!Directory.Exists(uploadRoot)) Directory.CreateDirectory(uploadRoot);
+    //     string? videoUrl = null, imageUrl = null, pdfUrl = null;
+    //     if (video != null)
+    //     {
+    //         var ext = Path.GetExtension(video.FileName);
+    //         var fileName = $"video_{Guid.NewGuid()}{ext}";
+    //         var filePath = Path.Combine(uploadRoot, fileName);
+    //         using (var stream = new FileStream(filePath, FileMode.Create))
+    //             await video.CopyToAsync(stream);
+    //         videoUrl = $"/uploads/{fileName}";
+    //     }
+    //     if (image != null)
+    //     {
+    //         var ext = Path.GetExtension(image.FileName);
+    //         var fileName = $"image_{Guid.NewGuid()}{ext}";
+    //         var filePath = Path.Combine(uploadRoot, fileName);
+    //         using (var stream = new FileStream(filePath, FileMode.Create))
+    //             await image.CopyToAsync(stream);
+    //         imageUrl = $"/uploads/{fileName}";
+    //     }
+    //     if (pdf != null)
+    //     {
+    //         var ext = Path.GetExtension(pdf.FileName);
+    //         var fileName = $"pdf_{Guid.NewGuid()}{ext}";
+    //         var filePath = Path.Combine(uploadRoot, fileName);
+    //         using (var stream = new FileStream(filePath, FileMode.Create))
+    //             await pdf.CopyToAsync(stream);
+    //         pdfUrl = $"/uploads/{fileName}";
+    //     }
+    //     return Ok(new { videoUrl, imageUrl, pdfUrl });
+    // }
 
     [HttpGet]
     [AllowAnonymous]
@@ -104,12 +104,13 @@ public class CoursesController : ControllerBase
             Console.WriteLine($"DEBUG: Kurs - ID: {course.Id}, Title: {course.Title}, DrivingSchoolId: {course.DrivingSchoolId}");
         }
         
-        // GEÇİCİ: Tüm kursları döndür (filtre kaldırıldı)
+        // DrivingSchoolId'ye göre filtrele
         var courses = await _db.Courses
             .Include(c => c.CourseContents)
+            .Where(c => c.DrivingSchoolId == drivingSchoolId)
             .ToListAsync();
             
-        Console.WriteLine($"DEBUG: Filtrelenmiş {courses.Count} kurs bulundu");
+        Console.WriteLine($"DEBUG: Filtrelenmiş {courses.Count} kurs bulundu (DrivingSchoolId: {drivingSchoolId})");
 
         // Sadece temel alanları ve courseContents'in temel alanlarını döndür
         var result = courses.Select(c => new {
@@ -142,7 +143,19 @@ public class CoursesController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetCourseContents([FromRoute] Guid id)
     {
-        var course = await _db.Courses.Include(c => c.CourseContents).FirstOrDefaultAsync(c => c.Id == id);
+        // DrivingSchoolId'yi al
+        Guid drivingSchoolId;
+        var claim = User.FindFirst("DrivingSchoolId")?.Value;
+        
+        if (claim != null && Guid.TryParse(claim, out var parsedId))
+            drivingSchoolId = parsedId;
+        else
+            drivingSchoolId = Guid.Empty;
+
+        var course = await _db.Courses
+            .Include(c => c.CourseContents)
+            .Where(c => c.Id == id && c.DrivingSchoolId == drivingSchoolId)
+            .FirstOrDefaultAsync(c => c.Id == id);
         if (course == null)
             return NotFound();
         var contents = course.CourseContents.OrderBy(cc => cc.Order).Select(cc => new {
@@ -162,9 +175,19 @@ public class CoursesController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetById([FromRoute] Guid id)
     {
+        // DrivingSchoolId'yi al
+        Guid drivingSchoolId;
+        var claim = User.FindFirst("DrivingSchoolId")?.Value;
+        
+        if (claim != null && Guid.TryParse(claim, out var parsedId))
+            drivingSchoolId = parsedId;
+        else
+            drivingSchoolId = Guid.Empty;
+
         var course = await _db.Courses
             .Include(c => c.CourseContents)
-            .FirstOrDefaultAsync(c => c.Id == id);
+            .Where(c => c.Id == id && c.DrivingSchoolId == drivingSchoolId)
+            .FirstOrDefaultAsync();
         if (course == null)
             return NotFound();
 

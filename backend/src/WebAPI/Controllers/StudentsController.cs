@@ -68,6 +68,7 @@ public class StudentsController : ControllerBase
                 Id = Guid.NewGuid(),
                 FullName = $"{ad} {soyad}".Trim(),
                 Email = email,
+                TcNumber = tc, // TC numarasını User tablosuna da ekle
                 Role = UserRole.Student,
                 CreatedAt = DateTime.UtcNow,
                 PasswordHash = "temp", // Geçici şifre hash'i
@@ -291,6 +292,41 @@ public class StudentsController : ControllerBase
                 q.CreatedAt
             })
         });
+    }
+
+    [HttpPost("fix-student-tc")]
+    [AllowAnonymous]
+    public async Task<IActionResult> FixStudentTc()
+    {
+        try
+        {
+            // Tüm öğrencileri al
+            var students = await _db.Students
+                .Include(s => s.User)
+                .ToListAsync();
+
+            var fixedCount = 0;
+            foreach (var student in students)
+            {
+                // Eğer User'da TC yoksa ama Student'da varsa, User'a ekle
+                if (string.IsNullOrEmpty(student.User?.TcNumber) && !string.IsNullOrEmpty(student.TCNumber))
+                {
+                    student.User.TcNumber = student.TCNumber;
+                    fixedCount++;
+                }
+            }
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new { 
+                message = $"{fixedCount} öğrencinin TC numarası düzeltildi",
+                fixedCount = fixedCount
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpGet("{id}/contents")]
