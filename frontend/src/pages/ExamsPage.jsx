@@ -13,6 +13,7 @@ import {
   XCircle,
   AlertCircle
 } from "lucide-react";
+import { buildApiUrl, API_ENDPOINTS } from "../config/api";
 
 export default function ExamsPage() {
   const [exams, setExams] = useState([]);
@@ -59,7 +60,7 @@ export default function ExamsPage() {
       try {
         const token = localStorage.getItem("token");
         const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-        const res = await fetch("http://192.168.1.78:5068/api/quizzes", { headers });
+        const res = await fetch(buildApiUrl(API_ENDPOINTS.QUIZZES), { headers });
         if (!res.ok) throw new Error("Sınavlar alınamadı");
         const data = await res.json();
         console.log("Sınav listesi:", data);
@@ -81,8 +82,9 @@ export default function ExamsPage() {
         }));
         
         setExams(formattedExams);
-      } catch {
-        setError("Sınav listesi alınamadı.");
+      } catch (error) {
+        console.error("Sınav listesi hatası:", error);
+        setError("Sınav listesi alınamadı. Lütfen internet bağlantınızı kontrol edin.");
       }
       setLoading(false);
     }
@@ -94,7 +96,7 @@ export default function ExamsPage() {
       try {
         const token = localStorage.getItem("token");
         const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-        const res = await fetch("http://192.168.1.78:5068/api/courses", { headers });
+        const res = await fetch(buildApiUrl(API_ENDPOINTS.COURSES), { headers });
         if (res.ok) {
           const data = await res.json();
           setCourses(data);
@@ -151,7 +153,7 @@ export default function ExamsPage() {
         duration: newExam.duration
       };
 
-      const res = await fetch("http://192.168.1.78:5068/api/quizzes", {
+      const res = await fetch(buildApiUrl(API_ENDPOINTS.QUIZZES), {
         method: "POST",
         headers,
         body: JSON.stringify(examData)
@@ -173,7 +175,8 @@ export default function ExamsPage() {
         throw new Error("Sınav eklenemedi");
       }
     } catch (error) {
-      setError("Sınav eklenirken hata oluştu: " + error.message);
+      console.error("Sınav ekleme hatası:", error);
+      setError("Sınav eklenirken hata oluştu. Lütfen tüm alanları kontrol edin.");
     }
   };
 
@@ -193,7 +196,7 @@ export default function ExamsPage() {
     try {
       const token = localStorage.getItem("token");
       const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-      const res = await fetch(`http://192.168.1.78:5068/api/quizzes/${exam.id}/questions`, { headers });
+      const res = await fetch(buildApiUrl(`${API_ENDPOINTS.QUIZZES}/${exam.id}/questions`), { headers });
       if (res.ok) {
         const questionsData = await res.json();
         setQuestions(questionsData);
@@ -234,7 +237,7 @@ export default function ExamsPage() {
         // Content-Type header'ını kaldırdık çünkü FormData otomatik olarak multipart/form-data olarak ayarlar
       };
 
-      const res = await fetch(`http://192.168.1.78:5068/api/quizzes/${selectedExam.id}/questions`, {
+      const res = await fetch(buildApiUrl(`${API_ENDPOINTS.QUIZZES}/${selectedExam.id}/questions`), {
         method: "POST",
         headers,
         body: formData
@@ -311,7 +314,7 @@ export default function ExamsPage() {
         courseId: editingExam.courseId === "" ? null : editingExam.courseId
       };
 
-      const res = await fetch(`http://192.168.1.78:5068/api/quizzes/${editingExam.id}`, {
+      const res = await fetch(buildApiUrl(`${API_ENDPOINTS.QUIZZES}/${editingExam.id}`), {
         method: "PUT",
         headers,
         body: JSON.stringify(updateData)
@@ -355,7 +358,7 @@ export default function ExamsPage() {
         "Authorization": `Bearer ${token}`
       };
 
-      const res = await fetch(`http://192.168.1.78:5068/api/quizzes/${examId}`, {
+      const res = await fetch(buildApiUrl(`${API_ENDPOINTS.QUIZZES}/${examId}`), {
         method: "DELETE",
         headers
       });
@@ -413,9 +416,9 @@ export default function ExamsPage() {
       };
 
       console.log("Gönderilen veri:", updateData);
-      console.log("URL:", `http://192.168.1.78:5068/api/quizzes/${selectedExam.id}/questions/${editingQuestion.id}`);
+      console.log("URL:", buildApiUrl(`${API_ENDPOINTS.QUIZZES}/${selectedExam.id}/questions/${editingQuestion.id}`));
 
-      const res = await fetch(`http://192.168.1.78:5068/api/quizzes/${selectedExam.id}/questions/${editingQuestion.id}`, {
+      const res = await fetch(buildApiUrl(`${API_ENDPOINTS.QUIZZES}/${selectedExam.id}/questions/${editingQuestion.id}`), {
         method: "PUT",
         headers,
         body: JSON.stringify(updateData)
@@ -458,7 +461,7 @@ export default function ExamsPage() {
         "Authorization": `Bearer ${token}`
       };
 
-      const res = await fetch(`http://192.168.1.78:5068/api/quizzes/${selectedExam.id}/questions/${questionId}`, {
+      const res = await fetch(buildApiUrl(`${API_ENDPOINTS.QUIZZES}/${selectedExam.id}/questions/${questionId}`), {
         method: "DELETE",
         headers
       });

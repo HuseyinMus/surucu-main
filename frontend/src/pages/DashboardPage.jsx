@@ -13,6 +13,7 @@ import {
   Activity,
   AlertCircle
 } from "lucide-react";
+import { buildApiUrl, API_ENDPOINTS } from "../config/api";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -24,6 +25,11 @@ export default function DashboardPage() {
   ]);
   const [latestStudents, setLatestStudents] = useState([]);
   const [upcomingQuizzes, setUpcomingQuizzes] = useState([]);
+  const [quickStats, setQuickStats] = useState({
+    monthlyRegistrations: 0,
+    successRate: 0,
+    activeCourses: 0
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -51,19 +57,19 @@ export default function DashboardPage() {
         const token = localStorage.getItem("token");
         const headers = token ? { "Authorization": `Bearer ${token}` } : {};
         // Öğrenciler
-        const studentsRes = await fetch("http://192.168.1.78:5068/api/students", { credentials: "include", headers });
+        const studentsRes = await fetch(buildApiUrl(API_ENDPOINTS.STUDENTS), { credentials: "include", headers });
         const students = await studentsRes.json();
         // Kurslar
-        const coursesRes = await fetch("http://192.168.1.78:5068/api/courses", { credentials: "include", headers });
+        const coursesRes = await fetch(buildApiUrl(API_ENDPOINTS.COURSES), { credentials: "include", headers });
         const courses = await coursesRes.json();
         // Eğitmenler
-        const instructorsRes = await fetch("http://192.168.1.78:5068/api/instructors", { credentials: "include", headers });
+        const instructorsRes = await fetch(buildApiUrl(API_ENDPOINTS.INSTRUCTORS), { credentials: "include", headers });
         const instructors = await instructorsRes.json();
         // Bildirimler
-        const notificationsRes = await fetch("http://192.168.1.78:5068/api/notifications", { credentials: "include", headers });
+        const notificationsRes = await fetch(buildApiUrl(API_ENDPOINTS.NOTIFICATIONS), { credentials: "include", headers });
         const notifications = await notificationsRes.json();
         // Sınavlar
-        const quizzesRes = await fetch("http://192.168.1.78:5068/api/quizzes", { credentials: "include", headers });
+        const quizzesRes = await fetch(buildApiUrl(API_ENDPOINTS.QUIZZES), { credentials: "include", headers });
         const quizzes = await quizzesRes.json();
 
         setSummary([
@@ -85,6 +91,35 @@ export default function DashboardPage() {
             participants: q.participants || q.participantCount || "-"
           }));
         setUpcomingQuizzes(upcoming);
+        
+        // Hızlı istatistikleri hesapla
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+        
+        // Bu ay kayıt olan öğrenciler
+        const monthlyRegistrations = students.filter(student => {
+          const registrationDate = new Date(student.registrationDate || student.RegistrationDate);
+          return registrationDate.getMonth() === currentMonth && 
+                 registrationDate.getFullYear() === currentYear;
+        }).length;
+        
+        // Başarı oranı (quiz ortalaması)
+        const successRate = quizzes.length > 0 ? 
+          Math.round(quizzes.reduce((sum, quiz) => sum + (quiz.averageScore || 0), 0) / quizzes.length) : 0;
+        
+        // Aktif kurslar (son 30 günde güncellenen)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const activeCourses = courses.filter(course => {
+          const updatedDate = new Date(course.updatedAt || course.CreatedAt);
+          return updatedDate > thirtyDaysAgo;
+        }).length;
+        
+        setQuickStats({
+          monthlyRegistrations,
+          successRate,
+          activeCourses
+        });
       } catch (err) {
         setError("Veriler alınırken hata oluştu.");
       }
@@ -177,7 +212,15 @@ export default function DashboardPage() {
             <div className="h-64 flex items-center justify-center bg-google-gray-50 rounded-lg">
               <div className="text-center">
                 <Activity size={48} className="mx-auto text-google-gray-300 mb-2" />
-                <p className="text-google-gray-500">Grafik verisi yakında eklenecek</p>
+                <p className="text-google-gray-500">
+                  {summary[0].value > 0 ? 
+                    `${summary[0].value} öğrenci, ${summary[1].value} kurs aktif` : 
+                    'Henüz veri yok'
+                  }
+                </p>
+                <p className="text-sm text-google-gray-400 mt-1">
+                  Son güncelleme: {new Date().toLocaleTimeString('tr-TR')}
+                </p>
               </div>
             </div>
           </div>
@@ -189,7 +232,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                 <div>
                   <p className="text-sm font-medium text-blue-900">Bu Ay Kayıt</p>
-                  <p className="text-2xl font-bold text-blue-600">24</p>
+                  <p className="text-2xl font-bold text-blue-600">{quickStats.monthlyRegistrations}</p>
                 </div>
                 <TrendingUp className="w-8 h-8 text-blue-500" />
               </div>
@@ -197,7 +240,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                 <div>
                   <p className="text-sm font-medium text-green-900">Başarı Oranı</p>
-                  <p className="text-2xl font-bold text-green-600">%87</p>
+                  <p className="text-2xl font-bold text-green-600">%{quickStats.successRate}</p>
                 </div>
                 <BarChart3 className="w-8 h-8 text-green-500" />
               </div>
@@ -205,7 +248,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                 <div>
                   <p className="text-sm font-medium text-purple-900">Aktif Kurslar</p>
-                  <p className="text-2xl font-bold text-purple-600">12</p>
+                  <p className="text-2xl font-bold text-purple-600">{quickStats.activeCourses}</p>
                 </div>
                 <BookOpen className="w-8 h-8 text-purple-500" />
               </div>

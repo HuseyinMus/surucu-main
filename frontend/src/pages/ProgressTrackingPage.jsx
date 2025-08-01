@@ -13,6 +13,7 @@ import {
   Target,
   Activity
 } from "lucide-react";
+import { buildApiUrl, API_ENDPOINTS } from "../config/api";
 
 export default function ProgressTrackingPage() {
   const { courseId } = useParams();
@@ -23,14 +24,54 @@ export default function ProgressTrackingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedPeriod, setSelectedPeriod] = useState(7); // 7, 30, 90 gün
+  const [courses, setCourses] = useState([]);
+  const [selectedCourse, setSelectedCourse] = useState(null);
 
+  // Kursları yükle
   useEffect(() => {
-    if (!courseId || !user?.id) return;
+    if (!user?.id) {
+      setError("Kullanıcı bilgisi bulunamadı.");
+      setLoading(false);
+      return;
+    }
     
-    fetchProgressData();
-  }, [courseId, user?.id, selectedPeriod]);
+    fetchCourses();
+  }, [user?.id]);
+
+  // Kurs seçildiğinde ilerleme verilerini yükle
+  useEffect(() => {
+    if (selectedCourse) {
+      fetchProgressData();
+    }
+  }, [selectedCourse, selectedPeriod]);
+
+  const fetchCourses = async () => {
+    try {
+      const headers = { "Authorization": `Bearer ${token}` };
+      const res = await fetch(buildApiUrl(API_ENDPOINTS.COURSES), { headers });
+      if (res.ok) {
+        const coursesData = await res.json();
+        setCourses(coursesData);
+        
+        // Eğer URL'de courseId varsa onu seç, yoksa ilk kursu seç
+        if (courseId) {
+          const course = coursesData.find(c => c.id === courseId);
+          setSelectedCourse(course || coursesData[0]);
+        } else if (coursesData.length > 0) {
+          setSelectedCourse(coursesData[0]);
+        }
+      }
+    } catch (error) {
+      console.error("Kurslar yüklenirken hata:", error);
+      setError("Kurslar yüklenemedi.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchProgressData = async () => {
+    if (!selectedCourse) return;
+    
     setLoading(true);
     setError("");
     
@@ -39,7 +80,7 @@ export default function ProgressTrackingPage() {
       
       // Ana ilerleme özeti
       const summaryRes = await fetch(
-        `http://192.168.1.78:5068/api/progress/summary/${user.id}/${courseId}`,
+        buildApiUrl(`${API_ENDPOINTS.PROGRESS_SUMMARY(user.id, selectedCourse.id)}`),
         { headers }
       );
       const summary = await summaryRes.json();
@@ -47,7 +88,7 @@ export default function ProgressTrackingPage() {
 
       // Ders bazlı ilerleme
       const lessonsRes = await fetch(
-        `http://192.168.1.78:5068/api/progress/lessons/${user.id}/${courseId}`,
+        buildApiUrl(`${API_ENDPOINTS.PROGRESS_LESSONS(user.id, selectedCourse.id)}`),
         { headers }
       );
       const lessons = await lessonsRes.json();
@@ -55,14 +96,15 @@ export default function ProgressTrackingPage() {
 
       // Günlük ilerleme
       const dailyRes = await fetch(
-        `http://192.168.1.78:5068/api/progress/daily/${user.id}/${courseId}?days=${selectedPeriod}`,
+        buildApiUrl(`${API_ENDPOINTS.PROGRESS_DAILY(user.id, selectedCourse.id, selectedPeriod)}`),
         { headers }
       );
       const daily = await dailyRes.json();
       setDailyProgress(daily);
 
-    } catch {
-      setError("İlerleme verileri alınamadı");
+    } catch (error) {
+      console.error("İlerleme verileri hatası:", error);
+      setError("İlerleme verileri alınamadı. Lütfen internet bağlantınızı kontrol edin.");
     } finally {
       setLoading(false);
     }
@@ -136,77 +178,104 @@ export default function ProgressTrackingPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Kurs Seçimi */}
+        {courses.length > 0 && (
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-google-gray-700 mb-2">
+              Kurs Seçin
+            </label>
+            <select
+              value={selectedCourse?.id || ""}
+              onChange={(e) => {
+                const course = courses.find(c => c.id === e.target.value);
+                setSelectedCourse(course);
+              }}
+              className="w-full md:w-64 px-3 py-2 border border-google-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-google-blue focus:border-transparent"
+            >
+              {courses.map(course => (
+                <option key={course.id} value={course.id}>
+                  {course.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Özet Kartları */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Genel İlerleme */}
-          <div className="bg-white rounded-xl shadow-sm border border-google-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Target className="w-6 h-6 text-google-blue" />
+        {selectedCourse && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Genel İlerleme */}
+            <div className="bg-white rounded-xl shadow-sm border border-google-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Target className="w-6 h-6 text-google-blue" />
+                </div>
+                <span className={`text-lg font-semibold ${getProgressColor(progressData?.overallProgress || 0)}`}>
+                  {Math.round(progressData?.overallProgress || 0)}%
+                </span>
               </div>
-              <span className={`text-lg font-semibold ${getProgressColor(progressData?.overallProgress || 0)}`}>
-                {Math.round(progressData?.overallProgress || 0)}%
-              </span>
+              <h3 className="text-sm font-medium text-google-gray-900 mb-1">Genel İlerleme</h3>
+              <div className="w-full bg-google-gray-200 rounded-full h-2">
+                <div 
+                  className={`h-2 rounded-full ${getProgressBarColor(progressData?.overallProgress || 0)}`}
+                  style={{ width: `${progressData?.overallProgress || 0}%` }}
+                ></div>
+              </div>
             </div>
-            <h3 className="text-sm font-medium text-google-gray-900 mb-1">Genel İlerleme</h3>
-            <div className="w-full bg-google-gray-200 rounded-full h-2">
-              <div 
-                className={`h-2 rounded-full ${getProgressBarColor(progressData?.overallProgress || 0)}`}
-                style={{ width: `${progressData?.overallProgress || 0}%` }}
-              ></div>
+
+            {/* Tamamlanan Dersler */}
+            <div className="bg-white rounded-xl shadow-sm border border-google-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                </div>
+                <span className="text-lg font-semibold text-google-gray-900">
+                  {progressData?.completedLessons || 0}/{progressData?.totalLessons || 0}
+                </span>
+              </div>
+              <h3 className="text-sm font-medium text-google-gray-900 mb-1">Tamamlanan Dersler</h3>
+              <p className="text-xs text-google-gray-600">
+                {progressData?.totalLessons || 0} dersten {progressData?.completedLessons || 0} tanesi tamamlandı
+              </p>
+            </div>
+
+            {/* Toplam Süre */}
+            <div className="bg-white rounded-xl shadow-sm border border-google-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Clock className="w-6 h-6 text-purple-600" />
+                </div>
+                <span className="text-lg font-semibold text-google-gray-900">
+                  {formatTime(progressData?.totalTimeSpent || 0)}
+                </span>
+              </div>
+              <h3 className="text-sm font-medium text-google-gray-900 mb-1">Toplam Süre</h3>
+              <p className="text-xs text-google-gray-600">
+                Kurs için harcanan toplam süre
+              </p>
+            </div>
+
+            {/* Quiz Ortalaması */}
+            <div className="bg-white rounded-xl shadow-sm border border-google-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <FileText className="w-6 h-6 text-yellow-600" />
+                </div>
+                <span className="text-lg font-semibold text-google-gray-900">
+                  {Math.round(progressData?.averageQuizScore || 0)}%
+                </span>
+              </div>
+              <h3 className="text-sm font-medium text-google-gray-900 mb-1">Quiz Ortalaması</h3>
+              <p className="text-xs text-google-gray-600">
+                {progressData?.completedQuizzes || 0} quiz tamamlandı
+              </p>
             </div>
           </div>
+        )}
 
-          {/* Tamamlanan Dersler */}
-          <div className="bg-white rounded-xl shadow-sm border border-google-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              </div>
-              <span className="text-lg font-semibold text-google-gray-900">
-                {progressData?.completedLessons || 0}/{progressData?.totalLessons || 0}
-              </span>
-            </div>
-            <h3 className="text-sm font-medium text-google-gray-900 mb-1">Tamamlanan Dersler</h3>
-            <p className="text-xs text-google-gray-600">
-              {progressData?.totalLessons || 0} dersten {progressData?.completedLessons || 0} tanesi tamamlandı
-            </p>
-          </div>
-
-          {/* Toplam Süre */}
-          <div className="bg-white rounded-xl shadow-sm border border-google-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Clock className="w-6 h-6 text-purple-600" />
-              </div>
-              <span className="text-lg font-semibold text-google-gray-900">
-                {formatTime(progressData?.totalTimeSpent || 0)}
-              </span>
-            </div>
-            <h3 className="text-sm font-medium text-google-gray-900 mb-1">Toplam Süre</h3>
-            <p className="text-xs text-google-gray-600">
-              Kurs için harcanan toplam süre
-            </p>
-          </div>
-
-          {/* Quiz Ortalaması */}
-          <div className="bg-white rounded-xl shadow-sm border border-google-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <FileText className="w-6 h-6 text-yellow-600" />
-              </div>
-              <span className="text-lg font-semibold text-google-gray-900">
-                {Math.round(progressData?.averageQuizScore || 0)}%
-              </span>
-            </div>
-            <h3 className="text-sm font-medium text-google-gray-900 mb-1">Quiz Ortalaması</h3>
-            <p className="text-xs text-google-gray-600">
-              {progressData?.completedQuizzes || 0} quiz tamamlandı
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Grafikler */}
+        {selectedCourse && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Günlük İlerleme Grafiği */}
           <div className="bg-white rounded-xl shadow-sm border border-google-gray-200 p-6">
             <div className="flex items-center justify-between mb-6">
@@ -295,20 +364,23 @@ export default function ProgressTrackingPage() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Son Aktivite */}
-        <div className="mt-8 bg-white rounded-xl shadow-sm border border-google-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-google-gray-900 mb-4">Son Aktivite</h2>
-          <div className="flex items-center gap-3 text-sm text-google-gray-600">
-            <Activity className="w-4 h-4" />
-            <span>
-              Son aktivite: {progressData?.lastActivity ? 
-                new Date(progressData.lastActivity).toLocaleString('tr-TR') : 
-                'Henüz aktivite yok'
-              }
-            </span>
+        {selectedCourse && (
+          <div className="mt-8 bg-white rounded-xl shadow-sm border border-google-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-google-gray-900 mb-4">Son Aktivite</h2>
+            <div className="flex items-center gap-3 text-sm text-google-gray-600">
+              <Activity className="w-4 h-4" />
+              <span>
+                Son aktivite: {progressData?.lastActivity ? 
+                  new Date(progressData.lastActivity).toLocaleString('tr-TR') : 
+                  'Henüz aktivite yok'
+                }
+              </span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

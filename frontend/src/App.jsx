@@ -15,6 +15,7 @@ import QuizzesPage from "./pages/QuizzesPage";
 import ProfilePage from "./pages/ProfilePage";
 import ProgressTrackingPage from "./pages/ProgressTrackingPage";
 import TestPage from "./pages/TestPage";
+import CRMDashboardPage from "./pages/CRMDashboardPage";
 
 function PrivateRoute({ children }) {
   const { token } = useAuth();
@@ -37,6 +38,7 @@ export default function App() {
         }
       >
         <Route index element={<DashboardPage />} />
+        <Route path="crm" element={<CRMDashboardPage />} />
         <Route path="students" element={<StudentsPage />} />
         <Route path="courses" element={<CoursesPage />} />
         <Route path="courses/:id" element={<CourseDetailPage />} />

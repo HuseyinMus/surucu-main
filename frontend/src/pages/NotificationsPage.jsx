@@ -15,6 +15,7 @@ import {
   Mail,
   MessageSquare
 } from "lucide-react";
+import { buildApiUrl, API_ENDPOINTS } from "../config/api";
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState([]);
@@ -42,12 +43,13 @@ export default function NotificationsPage() {
       try {
         const token = localStorage.getItem("token");
         const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-        const res = await fetch("http://192.168.1.78:5068/api/notifications", { headers });
+        const res = await fetch(buildApiUrl(API_ENDPOINTS.NOTIFICATIONS), { headers });
         if (!res.ok) throw new Error("Bildirimler alınamadı");
         const data = await res.json();
         setNotifications(data);
-      } catch {
-        setError("Bildirim listesi alınamadı.");
+      } catch (error) {
+        console.error("Bildirim listesi hatası:", error);
+        setError("Bildirim listesi alınamadı. Lütfen internet bağlantınızı kontrol edin.");
       }
       setLoading(false);
     }
@@ -130,7 +132,7 @@ export default function NotificationsPage() {
         "Authorization": `Bearer ${token}`
       };
 
-      const res = await fetch(`http://192.168.1.78:5068/api/notifications/${notificationId}`, {
+      const res = await fetch(buildApiUrl(`${API_ENDPOINTS.NOTIFICATIONS}/${notificationId}`), {
         method: "DELETE",
         headers
       });
@@ -142,7 +144,8 @@ export default function NotificationsPage() {
         throw new Error(`HTTP ${res.status}: ${errorText}`);
       }
     } catch (error) {
-      console.error("Bildirim silinirken hata:", error);
+      console.error("Bildirim silme hatası:", error);
+      setError("Bildirim silinirken hata oluştu.");
     }
   };
 
@@ -161,7 +164,7 @@ export default function NotificationsPage() {
         userId: "00000000-0000-0000-0000-000000000000" // Empty GUID for "all" recipients
       };
 
-      const res = await fetch("http://192.168.1.78:5068/api/notifications", {
+      const res = await fetch(buildApiUrl(API_ENDPOINTS.NOTIFICATIONS), {
         method: "POST",
         headers,
         body: JSON.stringify(notificationData)
@@ -183,7 +186,8 @@ export default function NotificationsPage() {
         throw new Error(`HTTP ${res.status}: ${errorText}`);
       }
     } catch (error) {
-      console.error("Bildirim eklenirken hata:", error);
+      console.error("Bildirim ekleme hatası:", error);
+      setError("Bildirim eklenirken hata oluştu. Lütfen tüm alanları kontrol edin.");
     }
   };
 
@@ -196,7 +200,7 @@ export default function NotificationsPage() {
         "Content-Type": "application/json"
       };
 
-      const res = await fetch(`http://192.168.1.78:5068/api/notifications/${editingNotification.id}`, {
+      const res = await fetch(buildApiUrl(`${API_ENDPOINTS.NOTIFICATIONS}/${editingNotification.id}`), {
         method: "PUT",
         headers,
         body: JSON.stringify(editingNotification)
@@ -214,7 +218,8 @@ export default function NotificationsPage() {
         throw new Error(`HTTP ${res.status}: ${errorText}`);
       }
     } catch (error) {
-      console.error("Bildirim güncellenirken hata:", error);
+      console.error("Bildirim güncelleme hatası:", error);
+      setError("Bildirim güncellenirken hata oluştu. Lütfen tüm alanları kontrol edin.");
     }
   };
 

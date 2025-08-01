@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthContext";
+import { buildApiUrl, API_ENDPOINTS } from "../config/api";
 
 function SignUpPage() {
   const [form, setForm] = useState({
@@ -26,7 +27,7 @@ function SignUpPage() {
     setMessage("");
     try {
       // Sürücü kursu kaydı için backend endpointini güncelle
-      const response = await fetch("http://192.168.1.78:5068/api/drivingschools", {
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.SIGNUP), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),

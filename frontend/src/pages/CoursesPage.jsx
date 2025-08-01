@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../components/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, Filter, Play, FileText, Edit, Trash2, Eye, BookOpen } from "lucide-react";
+import { buildApiUrl, API_ENDPOINTS } from "../config/api";
 
 function parseJwt(token) {
   if (!token) return {};
@@ -57,7 +58,7 @@ export default function CoursesPage() {
       setError("");
       try {
         const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-        const res = await fetch("http://192.168.1.78:5068/api/courses", { headers });
+        const res = await fetch(buildApiUrl(API_ENDPOINTS.COURSES), { headers });
         if (!res.ok) throw new Error("Kurslar alınamadı");
         const data = await res.json();
         setCourses(data);
@@ -84,7 +85,7 @@ export default function CoursesPage() {
     if (type === "image") formData.append("image", file);
     if (type === "pdf") formData.append("pdf", file);
     try {
-      const res = await fetch("http://192.168.1.78:5068/api/courses/upload-media", {
+      const res = await fetch(buildApiUrl(API_ENDPOINTS.UPLOAD_MEDIA), {
         method: "POST",
         body: formData,
       });
@@ -116,10 +117,16 @@ export default function CoursesPage() {
     }
 
     try {
+      // CourseType'ı backend'in beklediği formata çevir
+      const courseTypeMap = {
+        "Theory": "Theory",
+        "Practice": "Practice"
+      };
+
       const courseData = {
         title: form.title,
         description: form.description,
-        courseType: form.courseType,
+        courseType: courseTypeMap[form.courseType] || "Theory",
         tags: form.tags,
         drivingSchoolId: drivingSchoolId,
         videoUrl: videoUrl,
@@ -127,7 +134,7 @@ export default function CoursesPage() {
         pdfUrl: pdfUrl
       };
 
-      const res = await fetch("http://192.168.1.78:5068/api/courses", {
+      const res = await fetch(buildApiUrl(API_ENDPOINTS.COURSES), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -138,7 +145,21 @@ export default function CoursesPage() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        setFormError(errorData.title || "Kurs eklenemedi!");
+        console.log("Backend hata detayı:", errorData);
+        
+        // Backend'den gelen hata mesajlarını daha açıklayıcı hale getir
+        let errorMessage = "Kurs eklenemedi!";
+        if (errorData.title) {
+          errorMessage = errorData.title;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.errors) {
+          // Validation hatalarını birleştir
+          const validationErrors = Object.values(errorData.errors).flat();
+          errorMessage = validationErrors.join(", ");
+        }
+        
+        setFormError(errorMessage);
         return;
       }
 
@@ -148,8 +169,9 @@ export default function CoursesPage() {
       setImageUrl("");
       setPdfUrl("");
       setShowForm(false);
-    } catch {
-      setFormError("Kurs eklenemedi!");
+    } catch (error) {
+      console.error("Network hatası:", error);
+      setFormError("Sunucu bağlantı hatası! Lütfen internet bağlantınızı kontrol edin.");
     }
   };
 

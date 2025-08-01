@@ -9,11 +9,13 @@ import {
   LogOut,
   User,
   BarChart3,
+  Building2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const menu = [
   { to: "/panel", label: "Kontrol Paneli", icon: <LayoutDashboard size={20} /> },
+  { to: "/panel/crm", label: "CRM Dashboard", icon: <Building2 size={20} /> },
   { to: "/panel/students", label: "Öğrenciler", icon: <Users size={20} /> },
   { to: "/panel/courses", label: "Kurslar", icon: <BookOpen size={20} /> },
   { to: "/panel/exams", label: "Sınavlar", icon: <FileText size={20} /> },

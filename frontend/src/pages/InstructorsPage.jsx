@@ -13,6 +13,7 @@ import {
   MapPin,
   Star
 } from "lucide-react";
+import { buildApiUrl, API_ENDPOINTS } from "../config/api";
 
 export default function InstructorsPage() {
   const [instructors, setInstructors] = useState([]);
@@ -41,7 +42,7 @@ export default function InstructorsPage() {
       try {
         const token = localStorage.getItem("token");
         const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-        const res = await fetch("http://192.168.1.78:5068/api/instructors", { headers });
+        const res = await fetch(buildApiUrl(API_ENDPOINTS.INSTRUCTORS), { headers });
         if (!res.ok) throw new Error("Eğitmenler alınamadı");
         const data = await res.json();
         setInstructors(data);
@@ -83,7 +84,7 @@ export default function InstructorsPage() {
         branch: newInstructor.branch
       };
 
-      const res = await fetch("http://192.168.1.78:5068/api/instructors", {
+      const res = await fetch(buildApiUrl(API_ENDPOINTS.INSTRUCTORS), {
         method: "POST",
         headers,
         body: JSON.stringify(instructorData)
@@ -157,7 +158,7 @@ export default function InstructorsPage() {
         branch: editingInstructor.branch
       };
 
-      const res = await fetch(`http://192.168.1.78:5068/api/instructors/${editingInstructor.id}`, {
+      const res = await fetch(buildApiUrl(`${API_ENDPOINTS.INSTRUCTORS}/${editingInstructor.id}`), {
         method: "PUT",
         headers,
         body: JSON.stringify(instructorData)
@@ -190,7 +191,7 @@ export default function InstructorsPage() {
         "Authorization": `Bearer ${token}`
       };
 
-      const res = await fetch(`http://192.168.1.78:5068/api/instructors/${instructorId}`, {
+      const res = await fetch(buildApiUrl(`${API_ENDPOINTS.INSTRUCTORS}/${instructorId}`), {
         method: "DELETE",
         headers
       });

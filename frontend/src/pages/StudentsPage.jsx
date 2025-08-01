@@ -14,6 +14,7 @@ import {
   GraduationCap,
   MapPin
 } from "lucide-react";
+import { buildApiUrl, API_ENDPOINTS } from "../config/api";
 
 const initialForm = {
   ad: "",
@@ -61,7 +62,7 @@ export default function StudentsPage() {
       try {
         const token = localStorage.getItem("token");
         const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-        const res = await fetch("http://192.168.1.78:5068/api/students", { credentials: "include", headers });
+        const res = await fetch(buildApiUrl(API_ENDPOINTS.STUDENTS), { credentials: "include", headers });
         if (!res.ok) throw new Error("Liste alınamadı");
         const data = await res.json();
         console.log("Öğrenci listesi:", data);
@@ -96,7 +97,7 @@ export default function StudentsPage() {
 
   // Sürücü kursu listesini çek
   useEffect(() => {
-    fetch("http://192.168.1.78:5068/api/drivingschools")
+    fetch(buildApiUrl(API_ENDPOINTS.DRIVING_SCHOOLS))
       .then((res) => res.json())
       .then((data) => {
         setDrivingSchools(data);
@@ -155,6 +156,8 @@ export default function StudentsPage() {
 
   const validate = () => {
     const newErrors = {};
+    
+    // Temel validasyonlar
     if (!form.ad) newErrors.ad = "Ad zorunlu";
     if (!form.soyad) newErrors.soyad = "Soyad zorunlu";
     if (!form.tc) newErrors.tc = "TC zorunlu";
@@ -163,6 +166,33 @@ export default function StudentsPage() {
     if (!form.dogumTarihi) newErrors.dogumTarihi = "Doğum tarihi zorunlu";
     if (!form.cinsiyet) newErrors.cinsiyet = "Cinsiyet zorunlu";
     if (!form.ehliyetSinifi) newErrors.ehliyetSinifi = "Ehliyet sınıfı zorunlu";
+    
+    // TC numarası kontrolü
+    if (form.tc && form.tc.length !== 11) {
+      newErrors.tc = "TC kimlik numarası 11 haneli olmalıdır";
+    }
+    
+    // Email format kontrolü
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (form.email && !emailRegex.test(form.email)) {
+      newErrors.email = "Geçerli bir e-posta adresi giriniz";
+    }
+    
+    // Telefon format kontrolü
+    const phoneRegex = /^[0-9+\-\s()]+$/;
+    if (form.telefon && !phoneRegex.test(form.telefon)) {
+      newErrors.telefon = "Geçerli bir telefon numarası giriniz";
+    }
+    
+    // Doğum tarihi kontrolü
+    if (form.dogumTarihi) {
+      const birthDate = new Date(form.dogumTarihi);
+      const today = new Date();
+      if (birthDate >= today) {
+        newErrors.dogumTarihi = "Doğum tarihi geçmiş bir tarih olmalıdır";
+      }
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -182,14 +212,22 @@ export default function StudentsPage() {
         "Authorization": `Bearer ${token}`
       };
       
+      // Frontend form verilerini backend'in beklediği formata çevir
       const requestBody = {
-        ...form,
+        fullName: `${form.ad} ${form.soyad}`.trim(),
+        tc: form.tc,
+        email: form.email,
+        phone: form.telefon,
+        birthDate: form.dogumTarihi,
+        gender: form.cinsiyet,
+        licenseType: form.ehliyetSinifi,
+        notes: form.notlar,
         drivingSchoolId: drivingSchoolId
       };
       
       console.log("Gönderilen veri:", requestBody);
       
-      const res = await fetch("http://192.168.1.78:5068/api/students", {
+      const res = await fetch(buildApiUrl(API_ENDPOINTS.STUDENTS), {
         method: "POST",
         headers,
         body: JSON.stringify(requestBody)
@@ -201,10 +239,24 @@ export default function StudentsPage() {
       } else {
         const errorData = await res.json();
         console.log("Backend hata detayı:", errorData);
-        setToast({ type: "error", message: errorData.title || errorData.message || "Öğrenci eklenemedi!" });
+        
+        // Backend'den gelen hata mesajlarını daha açıklayıcı hale getir
+        let errorMessage = "Öğrenci eklenemedi!";
+        if (errorData.title) {
+          errorMessage = errorData.title;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.errors) {
+          // Validation hatalarını birleştir
+          const validationErrors = Object.values(errorData.errors).flat();
+          errorMessage = validationErrors.join(", ");
+        }
+        
+        setToast({ type: "error", message: errorMessage });
       }
-    } catch {
-      setToast({ type: "error", message: "Sunucu hatası!" });
+    } catch (error) {
+      console.error("Network hatası:", error);
+      setToast({ type: "error", message: "Sunucu bağlantı hatası! Lütfen internet bağlantınızı kontrol edin." });
     }
     setLoading(false);
   };
