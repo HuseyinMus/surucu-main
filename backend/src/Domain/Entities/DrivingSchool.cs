@@ -9,6 +9,7 @@ public class DrivingSchool
     public string Email { get; set; } = null!;
     public string? LogoUrl { get; set; }
     public string TaxNumber { get; set; } = null!;
+    public string? LicenseNumber { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     // Navigation properties
     public ICollection<Student> Students { get; set; } = new List<Student>();

@@ -6,6 +6,9 @@ public class QuizResult
     public Guid StudentId { get; set; }
     public Guid QuizId { get; set; }
     public int Score { get; set; }
+    public int TotalQuestions { get; set; }
+    public int CorrectAnswers { get; set; }
+    public int TimeSpent { get; set; }
     public DateTime CompletedAt { get; set; }
     // Navigation properties
     public Student Student { get; set; } = null!;

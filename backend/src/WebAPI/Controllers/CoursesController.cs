@@ -41,42 +41,46 @@ public class CoursesController : ControllerBase
         return Ok(course);
     }
 
-    // [HttpPost("upload-media")]
-    // [AllowAnonymous]
-    // public async Task<IActionResult> UploadMedia([FromForm] IFormFile? video, [FromForm] IFormFile? image, [FromForm] IFormFile? pdf)
-    // {
-    //     var uploadRoot = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
-    //     if (!Directory.Exists(uploadRoot)) Directory.CreateDirectory(uploadRoot);
-    //     string? videoUrl = null, imageUrl = null, pdfUrl = null;
-    //     if (video != null)
-    //     {
-    //         var ext = Path.GetExtension(video.FileName);
-    //         var fileName = $"video_{Guid.NewGuid()}{ext}";
-    //         var filePath = Path.Combine(uploadRoot, fileName);
-    //         using (var stream = new FileStream(filePath, FileMode.Create))
-    //             await video.CopyToAsync(stream);
-    //         videoUrl = $"/uploads/{fileName}";
-    //     }
-    //     if (image != null)
-    //     {
-    //         var ext = Path.GetExtension(image.FileName);
-    //         var fileName = $"image_{Guid.NewGuid()}{ext}";
-    //         var filePath = Path.Combine(uploadRoot, fileName);
-    //         using (var stream = new FileStream(filePath, FileMode.Create))
-    //             await image.CopyToAsync(stream);
-    //         imageUrl = $"/uploads/{fileName}";
-    //     }
-    //     if (pdf != null)
-    //     {
-    //         var ext = Path.GetExtension(pdf.FileName);
-    //         var fileName = $"pdf_{Guid.NewGuid()}{ext}";
-    //         var filePath = Path.Combine(uploadRoot, fileName);
-    //         using (var stream = new FileStream(filePath, FileMode.Create))
-    //             await pdf.CopyToAsync(stream);
-    //         pdfUrl = $"/uploads/{fileName}";
-    //     }
-    //     return Ok(new { videoUrl, imageUrl, pdfUrl });
-    // }
+    [HttpPost("upload-media")]
+    [AllowAnonymous]
+    public async Task<IActionResult> UploadMedia([FromForm] IFormFile? video, [FromForm] IFormFile? image, [FromForm] IFormFile? pdf)
+    {
+        var uploadRoot = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+        if (!Directory.Exists(uploadRoot)) Directory.CreateDirectory(uploadRoot);
+        string? videoUrl = null, imageUrl = null, pdfUrl = null;
+        
+        if (video != null)
+        {
+            var ext = Path.GetExtension(video.FileName);
+            var fileName = $"video_{Guid.NewGuid()}{ext}";
+            var filePath = Path.Combine(uploadRoot, fileName);
+            using (var stream = new FileStream(filePath, FileMode.Create))
+                await video.CopyToAsync(stream);
+            videoUrl = $"/uploads/{fileName}";
+        }
+        
+        if (image != null)
+        {
+            var ext = Path.GetExtension(image.FileName);
+            var fileName = $"image_{Guid.NewGuid()}{ext}";
+            var filePath = Path.Combine(uploadRoot, fileName);
+            using (var stream = new FileStream(filePath, FileMode.Create))
+                await image.CopyToAsync(stream);
+            imageUrl = $"/uploads/{fileName}";
+        }
+        
+        if (pdf != null)
+        {
+            var ext = Path.GetExtension(pdf.FileName);
+            var fileName = $"pdf_{Guid.NewGuid()}{ext}";
+            var filePath = Path.Combine(uploadRoot, fileName);
+            using (var stream = new FileStream(filePath, FileMode.Create))
+                await pdf.CopyToAsync(stream);
+            pdfUrl = $"/uploads/{fileName}";
+        }
+        
+        return Ok(new { videoUrl, imageUrl, pdfUrl });
+    }
 
     [HttpGet]
     [AllowAnonymous]
@@ -85,32 +89,16 @@ public class CoursesController : ControllerBase
         Guid drivingSchoolId;
         var claim = User.FindFirst("DrivingSchoolId")?.Value;
         
-        // DEBUG LOG'LARI
-        Console.WriteLine($"DEBUG: DrivingSchoolId claim değeri: {claim}");
-        Console.WriteLine($"DEBUG: User claims: {string.Join(", ", User.Claims.Select(c => $"{c.Type}={c.Value}"))}");
-        
         if (claim != null && Guid.TryParse(claim, out var parsedId))
             drivingSchoolId = parsedId;
         else
             drivingSchoolId = Guid.Empty;
-            
-        Console.WriteLine($"DEBUG: Kullanılacak DrivingSchoolId: {drivingSchoolId}");
-        
-        // Önce tüm kursları görelim
-        var allCourses = await _db.Courses.ToListAsync();
-        Console.WriteLine($"DEBUG: Veritabanında toplam {allCourses.Count} kurs var");
-        foreach (var course in allCourses.Take(5)) // İlk 5 kursu göster
-        {
-            Console.WriteLine($"DEBUG: Kurs - ID: {course.Id}, Title: {course.Title}, DrivingSchoolId: {course.DrivingSchoolId}");
-        }
         
         // DrivingSchoolId'ye göre filtrele
         var courses = await _db.Courses
             .Include(c => c.CourseContents)
             .Where(c => c.DrivingSchoolId == drivingSchoolId)
             .ToListAsync();
-            
-        Console.WriteLine($"DEBUG: Filtrelenmiş {courses.Count} kurs bulundu (DrivingSchoolId: {drivingSchoolId})");
 
         // Sadece temel alanları ve courseContents'in temel alanlarını döndür
         var result = courses.Select(c => new {

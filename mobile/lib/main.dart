@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'pages/login_page.dart';
 import 'pages/dashboard_page.dart';
+import 'pages/instructor_dashboard_page.dart';
+import 'pages/instructor_students_page.dart';
+import 'pages/instructor_schedules_page.dart';
+import 'pages/instructor_profile_page.dart';
+import 'pages/instructor_reports_page.dart';
+import 'pages/instructor_settings_page.dart';
 import 'pages/courses_page.dart';
 import 'pages/quizzes_page.dart';
 import 'pages/progress_page.dart';
@@ -33,9 +39,23 @@ class _MyAppState extends State<MyApp> {
   void _checkLoginStatus() async {
     try {
       final isLoggedIn = await ApiService.isLoggedIn();
-      setState(() {
-        _initialPage = isLoggedIn ? const DashboardPage() : const LoginPage();
-      });
+      if (isLoggedIn) {
+        // Kullanıcı bilgilerini al
+        final userProfile = await ApiService.getSavedUserProfile();
+        final role = userProfile?['role'] ?? 'Student';
+        
+        setState(() {
+          if (role == 'Instructor') {
+            _initialPage = const InstructorDashboardPage();
+          } else {
+            _initialPage = const DashboardPage();
+          }
+        });
+      } else {
+        setState(() {
+          _initialPage = const LoginPage();
+        });
+      }
     } catch (e) {
       setState(() {
         _initialPage = const LoginPage();
@@ -85,6 +105,12 @@ class _MyAppState extends State<MyApp> {
       home: _initialPage,
       routes: {
         '/dashboard': (context) => const DashboardPage(),
+        '/instructor-dashboard': (context) => const InstructorDashboardPage(),
+        '/instructor-students': (context) => const InstructorStudentsPage(),
+        '/instructor-schedules': (context) => const InstructorSchedulesPage(),
+        '/instructor-profile': (context) => const InstructorProfilePage(),
+        '/instructor-reports': (context) => const InstructorReportsPage(),
+        '/instructor-settings': (context) => const InstructorSettingsPage(),
         '/courses': (context) => const CoursesPage(),
         '/quizzes': (context) => const QuizzesPage(),
         '/progress': (context) => const ProgressPage(),

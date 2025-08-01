@@ -16,4 +16,5 @@ public class Quiz : ITenantEntity
     public Course? Course { get; set; }
     public ICollection<QuizQuestion> Questions { get; set; } = new List<QuizQuestion>();
     public ICollection<QuizResult> Results { get; set; } = new List<QuizResult>();
+    public ICollection<QuizSession> Sessions { get; set; } = new List<QuizSession>();
 } 

@@ -33,29 +33,49 @@ class _LoginPageState extends State<LoginPage> {
     );
 
     try {
-      // API ile giriş yap
-      final result = await ApiService.login(_tcController.text);
-      
-      // Loading kapat
-      if (context.mounted) Navigator.pop(context);
+      // Önce eğitmen girişi dene
+      var result = await ApiService.loginInstructorWithTc(_tcController.text);
       
       if (result != null) {
-        print('Giriş başarılı: $result');
-        // Başarılı giriş
+        print('Eğitmen girişi başarılı: $result');
+        // Loading kapat
+        if (context.mounted) Navigator.pop(context);
+        
+        // Eğitmen dashboard'una yönlendir
+        if (context.mounted) {
+          Navigator.of(context).pushReplacementNamed('/instructor-dashboard');
+        }
+        return;
+      }
+
+      // Eğitmen girişi başarısız, öğrenci girişi dene
+      print('Eğitmen girişi başarısız, öğrenci girişi deneniyor...');
+      result = await ApiService.login(_tcController.text);
+      
+      if (result != null) {
+        print('Öğrenci girişi başarılı: $result');
+        // Loading kapat
+        if (context.mounted) Navigator.pop(context);
+        
+        // Öğrenci dashboard'una yönlendir
         if (context.mounted) {
           Navigator.of(context).pushReplacementNamed('/dashboard');
         }
-      } else {
-        print('Giriş başarısız - result null');
-        // Hatalı giriş
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Giriş bilgileri hatalı!'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+        return;
+      }
+
+      // Her iki giriş de başarısız
+      print('Hem eğitmen hem öğrenci girişi başarısız');
+      // Loading kapat
+      if (context.mounted) Navigator.pop(context);
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('TC kimlik numarası bulunamadı!'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       print('Giriş hatası: $e');

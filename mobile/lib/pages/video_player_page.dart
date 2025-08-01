@@ -177,8 +177,8 @@ class _LearningPageState extends State<LearningPage> {
           progress = progressPercent / 100.0;
         });
 
-        // Progress'i API'ye gönder (her 10 saniyede bir)
-        if (position.inSeconds % 10 == 0) {
+        // Progress'i API'ye gönder (her 5 saniyede bir)
+        if (position.inSeconds % 5 == 0) {
           await _saveProgress(progressPercent, position.inSeconds);
         }
       }
@@ -193,18 +193,33 @@ class _LearningPageState extends State<LearningPage> {
       
       if (studentId.isNotEmpty && courseContents.isNotEmpty) {
         final currentContent = courseContents[currentIndex];
-        final courseContentId = currentContent['id']?.toString() ?? '';
+        final courseId = widget.course['id']?.toString() ?? '';
         
-        if (courseContentId.isNotEmpty) {
+        if (courseId.isNotEmpty) {
+          print('📊 Progress kaydediliyor: $progressPercent% ($timeSpent saniye)');
+          
           // Progress'i API'ye kaydet
-          await ApiService.updateProgress(studentId, courseContentId, progressPercent, timeSpent);
+          final success = await ApiService.updateProgress(studentId, courseId, progressPercent, timeSpent);
+          
+          if (success) {
+            print('✅ Progress başarıyla kaydedildi');
+          } else {
+            print('❌ Progress kaydedilemedi');
+          }
           
           // Video tamamlandıysa dersi tamamla olarak işaretle
-          if (progressPercent >= 90) {
-            await ApiService.completeLesson(studentId, courseContentId);
-            setState(() {
-              isCompleted = true;
-            });
+          if (progressPercent >= 90 && !isCompleted) {
+            print('🎉 Ders tamamlanıyor...');
+            final lessonSuccess = await ApiService.completeLesson(studentId, courseId);
+            
+            if (lessonSuccess) {
+              setState(() {
+                isCompleted = true;
+              });
+              print('✅ Ders başarıyla tamamlandı');
+            } else {
+              print('❌ Ders tamamlanamadı');
+            }
           }
         }
       }

@@ -60,6 +60,7 @@ class _ProgressPageState extends State<ProgressPage> with TickerProviderStateMix
       if (studentId.isNotEmpty) {
         // Progress verilerini API'den al
         final data = await ApiService.getDashboardProgress(studentId);
+        print('📊 Dashboard progress data: $data');
         
         if (data != null) {
           setState(() {
@@ -68,9 +69,9 @@ class _ProgressPageState extends State<ProgressPage> with TickerProviderStateMix
               'coursesCompleted': data['completedCourses'] ?? 0,
               'totalCourses': data['totalCourses'] ?? 0,
               'hoursStudied': (data['totalTimeSpent'] ?? 0) / 3600, // Saniyeyi saate çevir
-              'streak': data['streak'] ?? 0,
-              'weeklyGoal': data['weeklyGoal'] ?? 80,
-              'weeklyProgress': data['weeklyProgress'] ?? 0,
+              'streak': data['currentStreak'] ?? 0,
+              'weeklyGoal': data['weeklyGoal'] ?? 80, // API'den al, yoksa varsayılan
+              'weeklyProgress': (data['weeklyProgress'] ?? data['overallProgress'] ?? 0).toDouble(),
             };
             
             // Başarımları API'den al veya varsayılan değerleri kullan
@@ -78,33 +79,33 @@ class _ProgressPageState extends State<ProgressPage> with TickerProviderStateMix
             isLoading = false;
           });
         } else {
-          // API'den veri gelmezse varsayılan değerleri kullan
+          // API'den veri gelmezse boş değerleri kullan
           setState(() {
             progressData = {
-              'totalProgress': 68.0,
-              'coursesCompleted': 3,
-              'totalCourses': 5,
-              'hoursStudied': 42.0,
-              'streak': 7,
-              'weeklyGoal': 80,
-              'weeklyProgress': 65,
+              'totalProgress': 0.0,
+              'coursesCompleted': 0,
+              'totalCourses': 0,
+              'hoursStudied': 0.0,
+              'streak': 0,
+              'weeklyGoal': 80, // Varsayılan hedef
+              'weeklyProgress': 0.0,
             };
-            achievements = _generateDefaultAchievements();
+            achievements = [];
             isLoading = false;
           });
         }
       } else {
         setState(() {
           progressData = {
-            'totalProgress': 68.0,
-            'coursesCompleted': 3,
-            'totalCourses': 5,
-            'hoursStudied': 42.0,
-            'streak': 7,
+            'totalProgress': 0.0,
+            'coursesCompleted': 0,
+            'totalCourses': 0,
+            'hoursStudied': 0.0,
+            'streak': 0,
             'weeklyGoal': 80,
-            'weeklyProgress': 65,
+            'weeklyProgress': 0.0,
           };
-          achievements = _generateDefaultAchievements();
+          achievements = [];
           isLoading = false;
         });
       }
@@ -112,15 +113,15 @@ class _ProgressPageState extends State<ProgressPage> with TickerProviderStateMix
       print('Progress veri yükleme hatası: $e');
       setState(() {
         progressData = {
-          'totalProgress': 68.0,
-          'coursesCompleted': 3,
-          'totalCourses': 5,
-          'hoursStudied': 42.0,
-          'streak': 7,
+          'totalProgress': 0.0,
+          'coursesCompleted': 0,
+          'totalCourses': 0,
+          'hoursStudied': 0.0,
+          'streak': 0,
           'weeklyGoal': 80,
-          'weeklyProgress': 65,
+          'weeklyProgress': 0.0,
         };
-        achievements = _generateDefaultAchievements();
+        achievements = [];
         isLoading = false;
       });
     }

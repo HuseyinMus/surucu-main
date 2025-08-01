@@ -21,10 +21,13 @@ public class ScheduleService : IScheduleService
             Id = Guid.NewGuid(),
             StudentId = request.StudentId,
             InstructorId = request.InstructorId,
-            CourseId = request.CourseId,
+            DrivingSchoolId = request.DrivingSchoolId,
             ScheduledDate = request.ScheduledDate,
-            Type = Enum.Parse<ScheduleType>(request.Type, true),
-            Status = ScheduleStatus.Scheduled
+            Duration = request.Duration,
+            LessonType = (Domain.Entities.LessonType)request.LessonType,
+            Status = ScheduleStatus.Scheduled,
+            Notes = request.Notes,
+            CreatedAt = DateTime.UtcNow
         };
         _db.Schedules.Add(schedule);
         await _db.SaveChangesAsync();
@@ -33,10 +36,13 @@ public class ScheduleService : IScheduleService
             Id = schedule.Id,
             StudentId = schedule.StudentId,
             InstructorId = schedule.InstructorId,
-            CourseId = schedule.CourseId,
+            DrivingSchoolId = schedule.DrivingSchoolId,
             ScheduledDate = schedule.ScheduledDate,
-            Type = schedule.Type.ToString(),
-            Status = schedule.Status.ToString()
+            Duration = schedule.Duration,
+            LessonType = schedule.LessonType.ToString(),
+            Status = schedule.Status.ToString(),
+            Notes = schedule.Notes,
+            CreatedAt = schedule.CreatedAt
         };
     }
 
@@ -50,10 +56,13 @@ public class ScheduleService : IScheduleService
             Id = schedule.Id,
             StudentId = schedule.StudentId,
             InstructorId = schedule.InstructorId,
-            CourseId = schedule.CourseId,
+            DrivingSchoolId = schedule.DrivingSchoolId,
             ScheduledDate = schedule.ScheduledDate,
-            Type = schedule.Type.ToString(),
-            Status = schedule.Status.ToString()
+            Duration = schedule.Duration,
+            LessonType = schedule.LessonType.ToString(),
+            Status = schedule.Status.ToString(),
+            Notes = schedule.Notes,
+            CreatedAt = schedule.CreatedAt
         }).ToList();
     }
 } 

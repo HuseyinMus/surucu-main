@@ -49,101 +49,44 @@ public class AuthController : ControllerBase
         }
     }
 
-    [HttpPost("create-test-user")]
-    public async Task<IActionResult> CreateTestUser()
+    [HttpPost("login-instructor-tc")]
+    public async Task<IActionResult> LoginInstructorWithTc([FromBody] TcLoginRequest request)
     {
         try
         {
-            // Önce sürücü kursu oluştur
-            var drivingSchool = new DrivingSchool
+            // TC numarası ile eğitmeni bul
+            var instructor = await _db.Instructors
+                .Include(i => i.User)
+                .Include(i => i.DrivingSchool)
+                .FirstOrDefaultAsync(i => i.User.TcNumber == request.TcNumber && i.IsActive);
+
+            if (instructor == null)
             {
-                Id = Guid.NewGuid(),
-                Name = "ESEN SÜRÜCÜ KURSU",
-                Address = "Merkez Mahallesi, Atatürk Caddesi No:123, İstanbul",
-                Phone = "+90 212 555 0123",
-                Email = "info@esensurucukursu.com",
-                LogoUrl = "https://img.icons8.com/color/96/000000/car.png",
-                TaxNumber = "1234567890",
-                CreatedAt = DateTime.UtcNow
-            };
+                return BadRequest("Eğitmen bulunamadı veya aktif değil");
+            }
 
-            _db.DrivingSchools.Add(drivingSchool);
+            // JWT token oluştur
+            var token = _authService.GenerateJwtToken(instructor.User);
 
-            // Kullanıcı oluştur
-            var user = new User
+            return Ok(new
             {
-                Id = Guid.NewGuid(),
-                FullName = "Ahmet Yılmaz",
-                Email = "ahmet@example.com",
-                TcNumber = "12345678901",
-                Phone = "+90 555 123 4567",
-                Role = UserRole.Student,
-                CreatedAt = DateTime.UtcNow,
-                IsActive = true,
-                DrivingSchoolId = drivingSchool.Id,
-                PasswordHash = "test_hash"
-            };
-
-            _db.Users.Add(user);
-
-            // Öğrenci bilgileri oluştur
-            var student = new Student
-            {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                DrivingSchoolId = drivingSchool.Id,
-                TCNumber = "12345678901",
-                BirthDate = new DateTime(1995, 1, 15),
-                LicenseType = "B",
-                CurrentStage = StudentStage.Theory,
-                RegistrationDate = DateTime.UtcNow,
-                IsActive = true
-            };
-
-            _db.Students.Add(student);
-
-            await _db.SaveChangesAsync();
-
-            return Ok(new { 
-                message = "Test kullanıcısı oluşturuldu",
-                userId = user.Id,
-                drivingSchoolId = drivingSchool.Id,
-                tcNumber = "12345678901"
-            });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    [HttpGet("debug-users")]
-    public async Task<IActionResult> DebugUsers()
-    {
-        try
-        {
-            var users = await _db.Users
-                .Include(u => u.Student)
-                .Include(u => u.Instructor)
-                .Select(u => new
+                token = token,
+                userId = instructor.User.Id,
+                fullName = instructor.User.FullName,
+                email = instructor.User.Email,
+                role = "Instructor",
+                drivingSchoolId = instructor.DrivingSchoolId,
+                instructorId = instructor.Id,
+                specialization = instructor.Specialization,
+                experience = instructor.Experience,
+                drivingSchool = new
                 {
-                    id = u.Id,
-                    fullName = u.FullName,
-                    email = u.Email,
-                    tcNumber = u.TcNumber,
-                    role = u.Role.ToString(),
-                    isActive = u.IsActive,
-                    drivingSchoolId = u.DrivingSchoolId,
-                    createdAt = u.CreatedAt,
-                    hasStudent = u.Student != null,
-                    hasInstructor = u.Instructor != null
-                })
-                .ToListAsync();
-
-            return Ok(new { 
-                message = "Kullanıcılar listelendi",
-                count = users.Count,
-                users = users
+                    id = instructor.DrivingSchool.Id,
+                    name = instructor.DrivingSchool.Name,
+                    address = instructor.DrivingSchool.Address,
+                    phone = instructor.DrivingSchool.Phone,
+                    email = instructor.DrivingSchool.Email
+                }
             });
         }
         catch (Exception ex)
@@ -151,6 +94,8 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+
 
     [HttpGet("profile")]
     [Authorize]

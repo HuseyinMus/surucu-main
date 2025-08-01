@@ -622,4 +622,168 @@ public class QuizzesController : ControllerBase
             return BadRequest($"Soru silinirken hata oluştu: {ex.Message}");
         }
     }
+
+    // START QUIZ
+    [HttpPost("{quizId}/start")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> StartQuiz([FromRoute] Guid quizId)
+    {
+        try
+        {
+            // JWT token'dan user ID'yi al
+            var userIdClaim = User.FindFirst("UserId");
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return BadRequest("User ID bulunamadı");
+            }
+
+            // Öğrenci bilgilerini al
+            var student = await _db.Students
+                .FirstOrDefaultAsync(s => s.UserId == userId);
+
+            if (student == null)
+            {
+                return NotFound("Öğrenci bulunamadı");
+            }
+
+            // Quiz'i kontrol et
+            var quiz = await _db.Quizzes
+                .FirstOrDefaultAsync(q => q.Id == quizId);
+
+            if (quiz == null)
+            {
+                return NotFound("Quiz bulunamadı");
+            }
+
+            // Quiz başlatma kaydı oluştur
+            var quizSession = new QuizSession
+            {
+                Id = Guid.NewGuid(),
+                StudentId = student.Id,
+                QuizId = quizId,
+                StartTime = DateTime.UtcNow,
+                IsCompleted = false
+            };
+
+            _db.QuizSessions.Add(quizSession);
+            await _db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                sessionId = quizSession.Id,
+                quizId = quizId,
+                startTime = quizSession.StartTime,
+                duration = quiz.Duration ?? 60
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Quiz başlatılırken hata: {ex.Message}");
+        }
+    }
+
+    // SUBMIT QUIZ
+    [HttpPost("{quizId}/submit")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> SubmitQuiz([FromRoute] Guid quizId, [FromBody] QuizSubmitRequest request)
+    {
+        try
+        {
+            // JWT token'dan user ID'yi al
+            var userIdClaim = User.FindFirst("UserId");
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return BadRequest("User ID bulunamadı");
+            }
+
+            // Öğrenci bilgilerini al
+            var student = await _db.Students
+                .FirstOrDefaultAsync(s => s.UserId == userId);
+
+            if (student == null)
+            {
+                return NotFound("Öğrenci bulunamadı");
+            }
+
+            // Quiz'i kontrol et
+            var quiz = await _db.Quizzes
+                .FirstOrDefaultAsync(q => q.Id == quizId);
+
+            if (quiz == null)
+            {
+                return NotFound("Quiz bulunamadı");
+            }
+
+            // Quiz sonucunu kaydet
+            var quizResult = new QuizResult
+            {
+                Id = Guid.NewGuid(),
+                StudentId = student.Id,
+                QuizId = quizId,
+                Score = request.Score,
+                TotalQuestions = request.TotalQuestions,
+                CorrectAnswers = request.CorrectAnswers,
+                TimeSpent = request.TimeSpent,
+                CompletedAt = DateTime.UtcNow
+            };
+
+            _db.QuizResults.Add(quizResult);
+            await _db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                resultId = quizResult.Id,
+                score = quizResult.Score,
+                totalQuestions = quizResult.TotalQuestions,
+                correctAnswers = quizResult.CorrectAnswers,
+                percentage = Math.Round((double)quizResult.CorrectAnswers / quizResult.TotalQuestions * 100, 1)
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Quiz sonucu kaydedilirken hata: {ex.Message}");
+        }
+    }
+
+    // QUIZ PROGRESS
+    [HttpGet("progress/{studentId}/{quizId}")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> GetQuizProgress(Guid studentId, Guid quizId)
+    {
+        try
+        {
+            var quizResult = await _db.QuizResults
+                .Where(qr => qr.StudentId == studentId && qr.QuizId == quizId)
+                .OrderByDescending(qr => qr.CompletedAt)
+                .FirstOrDefaultAsync();
+
+            if (quizResult == null)
+            {
+                return Ok(new
+                {
+                    hasAttempted = false,
+                    bestScore = 0,
+                    attempts = 0,
+                    lastAttempt = (DateTime?)null
+                });
+            }
+
+            var attempts = await _db.QuizResults
+                .Where(qr => qr.StudentId == studentId && qr.QuizId == quizId)
+                .CountAsync();
+
+            return Ok(new
+            {
+                hasAttempted = true,
+                bestScore = quizResult.Score,
+                attempts = attempts,
+                lastAttempt = quizResult.CompletedAt,
+                percentage = Math.Round((double)quizResult.CorrectAnswers / quizResult.TotalQuestions * 100, 1)
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Quiz progress alınırken hata: {ex.Message}");
+        }
+    }
 } 

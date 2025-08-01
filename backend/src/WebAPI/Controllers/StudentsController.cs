@@ -32,18 +32,17 @@ public class StudentsController : ControllerBase
             if (string.IsNullOrEmpty(drivingSchoolIdClaim))
                 return BadRequest("DrivingSchoolId bulunamadı");
 
-            // Frontend'den gelen veriyi parse et
-            var ad = request.ContainsKey("ad") ? request["ad"]?.ToString() ?? "" : "";
-            var soyad = request.ContainsKey("soyad") ? request["soyad"]?.ToString() ?? "" : "";
+            // Frontend'den gelen veriyi parse et (yeni format)
+            var fullName = request.ContainsKey("fullName") ? request["fullName"]?.ToString() ?? "" : "";
             var tc = request.ContainsKey("tc") ? request["tc"]?.ToString() ?? "" : "";
             var email = request.ContainsKey("email") ? request["email"]?.ToString() ?? "" : "";
-            var telefon = request.ContainsKey("telefon") ? request["telefon"]?.ToString() ?? "" : "";
-            var dogumTarihi = request.ContainsKey("dogumTarihi") ? request["dogumTarihi"]?.ToString() ?? "" : "";
-            var cinsiyet = request.ContainsKey("cinsiyet") ? request["cinsiyet"]?.ToString() ?? "" : "";
-            var ehliyetSinifi = request.ContainsKey("ehliyetSinifi") ? request["ehliyetSinifi"]?.ToString() ?? "" : "";
-            var notlar = request.ContainsKey("notlar") ? request["notlar"]?.ToString() ?? "" : "";
+            var phone = request.ContainsKey("phone") ? request["phone"]?.ToString() ?? "" : "";
+            var birthDate = request.ContainsKey("birthDate") ? request["birthDate"]?.ToString() ?? "" : "";
+            var gender = request.ContainsKey("gender") ? request["gender"]?.ToString() ?? "" : "";
+            var licenseType = request.ContainsKey("licenseType") ? request["licenseType"]?.ToString() ?? "" : "";
+            var notes = request.ContainsKey("notes") ? request["notes"]?.ToString() ?? "" : "";
             
-            Console.WriteLine($"Parsed data - Ad: {ad}, Soyad: {soyad}, TC: {tc}, Email: {email}");
+            Console.WriteLine($"Parsed data - FullName: {fullName}, TC: {tc}, Email: {email}");
             
             // Eğer email zaten varsa, yeni user oluşturma
             var existingUser = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
@@ -53,7 +52,7 @@ public class StudentsController : ControllerBase
             }
 
             // Validation
-            if (string.IsNullOrEmpty(ad) || string.IsNullOrEmpty(soyad))
+            if (string.IsNullOrEmpty(fullName))
                 return BadRequest("Ad ve soyad zorunludur");
             
             if (string.IsNullOrEmpty(tc))
@@ -66,7 +65,7 @@ public class StudentsController : ControllerBase
             var user = new User
             {
                 Id = Guid.NewGuid(),
-                FullName = $"{ad} {soyad}".Trim(),
+                FullName = fullName.Trim(),
                 Email = email,
                 TcNumber = tc, // TC numarasını User tablosuna da ekle
                 Role = UserRole.Student,
@@ -79,15 +78,15 @@ public class StudentsController : ControllerBase
             await _db.SaveChangesAsync();
 
             // Sonra Student oluştur
-            DateTime birthDate;
-            if (!string.IsNullOrEmpty(dogumTarihi) && DateTime.TryParse(dogumTarihi, out var parsedDate))
+            DateTime parsedBirthDate;
+            if (!string.IsNullOrEmpty(birthDate) && DateTime.TryParse(birthDate, out var parsedDate))
             {
                 // PostgreSQL için UTC'ye çevir
-                birthDate = DateTime.SpecifyKind(parsedDate, DateTimeKind.Utc);
+                parsedBirthDate = DateTime.SpecifyKind(parsedDate, DateTimeKind.Utc);
             }
             else
             {
-                birthDate = DateTime.UtcNow;
+                parsedBirthDate = DateTime.UtcNow;
             }
             
             var student = new Student
@@ -96,13 +95,13 @@ public class StudentsController : ControllerBase
                 UserId = user.Id,
                 DrivingSchoolId = Guid.Parse(drivingSchoolIdClaim),
                 TCNumber = tc,
-                BirthDate = birthDate,
-                LicenseType = ehliyetSinifi,
+                BirthDate = parsedBirthDate,
+                LicenseType = licenseType,
                 RegistrationDate = DateTime.UtcNow,
                 CurrentStage = StudentStage.Registered,
-                PhoneNumber = telefon,
-                Gender = cinsiyet,
-                Notes = notlar
+                PhoneNumber = phone,
+                Gender = gender,
+                Notes = notes
             };
 
             _db.Students.Add(student);
@@ -148,49 +147,10 @@ public class StudentsController : ControllerBase
             var students = await _studentService.GetAllStudentsAsync();
             var filtered = students.Where(s => s.DrivingSchoolId == drivingSchoolId);
             
-            // Eğer hiç öğrenci yoksa test verileri ekle
+            // Eğer hiç öğrenci yoksa boş liste döndür
             if (!filtered.Any())
             {
-                var testStudents = new List<object>
-                {
-                    new {
-                        Id = Guid.NewGuid(),
-                        LicenseType = "B",
-                        RegistrationDate = DateTime.Now.AddDays(-30),
-                        fullName = "Ahmet Yılmaz",
-                        email = "ahmet.yilmaz@email.com",
-                        tc = "12345678901",
-                        telefon = "0532 123 45 67",
-                        dogumTarihi = "1995-05-15",
-                        cinsiyet = "Erkek",
-                        notlar = "Başarılı öğrenci"
-                    },
-                    new {
-                        Id = Guid.NewGuid(),
-                        LicenseType = "A",
-                        RegistrationDate = DateTime.Now.AddDays(-15),
-                        fullName = "Ayşe Demir",
-                        email = "ayse.demir@email.com",
-                        tc = "98765432109",
-                        telefon = "0533 987 65 43",
-                        dogumTarihi = "1998-08-22",
-                        cinsiyet = "Kadın",
-                        notlar = "Teorik sınavı geçti"
-                    },
-                    new {
-                        Id = Guid.NewGuid(),
-                        LicenseType = "B",
-                        RegistrationDate = DateTime.Now.AddDays(-7),
-                        fullName = "Mehmet Kaya",
-                        email = "mehmet.kaya@email.com",
-                        tc = "45678912301",
-                        telefon = "0534 456 78 90",
-                        dogumTarihi = "1990-12-10",
-                        cinsiyet = "Erkek",
-                        notlar = "Direksiyon derslerine başladı"
-                    }
-                };
-                return Ok(testStudents);
+                return Ok(new List<object>());
             }
             
             var result = filtered.Select(s => new {
@@ -209,47 +169,7 @@ public class StudentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            // Hata durumunda test verilerini döndür
-            var testStudents = new List<object>
-            {
-                new {
-                    Id = Guid.NewGuid(),
-                    LicenseType = "B",
-                    RegistrationDate = DateTime.Now.AddDays(-30),
-                    fullName = "Ahmet Yılmaz",
-                    email = "ahmet.yilmaz@email.com",
-                    tc = "12345678901",
-                    telefon = "0532 123 45 67",
-                    dogumTarihi = "1995-05-15",
-                    cinsiyet = "Erkek",
-                    notlar = "Başarılı öğrenci"
-                },
-                new {
-                    Id = Guid.NewGuid(),
-                    LicenseType = "A",
-                    RegistrationDate = DateTime.Now.AddDays(-15),
-                    fullName = "Ayşe Demir",
-                    email = "ayse.demir@email.com",
-                    tc = "98765432109",
-                    telefon = "0533 987 65 43",
-                    dogumTarihi = "1998-08-22",
-                    cinsiyet = "Kadın",
-                    notlar = "Teorik sınavı geçti"
-                },
-                new {
-                    Id = Guid.NewGuid(),
-                    LicenseType = "B",
-                    RegistrationDate = DateTime.Now.AddDays(-7),
-                    fullName = "Mehmet Kaya",
-                    email = "mehmet.kaya@email.com",
-                    tc = "45678912301",
-                    telefon = "0534 456 78 90",
-                    dogumTarihi = "1990-12-10",
-                    cinsiyet = "Erkek",
-                    notlar = "Direksiyon derslerine başladı"
-                }
-            };
-            return Ok(testStudents);
+            return BadRequest($"Öğrenci listesi alınırken hata oluştu: {ex.Message}");
         }
     }
 
@@ -294,40 +214,7 @@ public class StudentsController : ControllerBase
         });
     }
 
-    [HttpPost("fix-student-tc")]
-    [AllowAnonymous]
-    public async Task<IActionResult> FixStudentTc()
-    {
-        try
-        {
-            // Tüm öğrencileri al
-            var students = await _db.Students
-                .Include(s => s.User)
-                .ToListAsync();
 
-            var fixedCount = 0;
-            foreach (var student in students)
-            {
-                // Eğer User'da TC yoksa ama Student'da varsa, User'a ekle
-                if (string.IsNullOrEmpty(student.User?.TcNumber) && !string.IsNullOrEmpty(student.TCNumber))
-                {
-                    student.User.TcNumber = student.TCNumber;
-                    fixedCount++;
-                }
-            }
-
-            await _db.SaveChangesAsync();
-
-            return Ok(new { 
-                message = $"{fixedCount} öğrencinin TC numarası düzeltildi",
-                fixedCount = fixedCount
-            });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
 
     [HttpGet("{id}/contents")]
     [AllowAnonymous]
@@ -446,7 +333,7 @@ public class StudentsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin,Instructor")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(Guid id)
     {
         try
@@ -458,12 +345,9 @@ public class StudentsController : ControllerBase
             if (student == null)
                 return NotFound("Öğrenci bulunamadı");
 
-            // Soft delete - IsActive'i false yap
-            if (student.User != null)
-            {
-                student.User.IsActive = false;
-            }
+            // Öğrenciyi pasif hale getir (soft delete)
             student.IsActive = false;
+            student.User.IsActive = false;
 
             await _db.SaveChangesAsync();
 
@@ -472,6 +356,352 @@ public class StudentsController : ControllerBase
         catch (Exception ex)
         {
             return BadRequest($"Öğrenci silinirken hata oluştu: {ex.Message}");
+        }
+    }
+
+    // ÖĞRENCİ RANDEVU YÖNETİMİ ENDPOINT'LERİ
+
+    [HttpGet("available-instructors")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> GetAvailableInstructors()
+    {
+        try
+        {
+            // JWT token'dan student ID'yi al
+            var userIdClaim = User.FindFirst("UserId");
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return BadRequest("User ID bulunamadı");
+            }
+
+            // Öğrenciyi bul
+            var student = await _db.Students
+                .FirstOrDefaultAsync(s => s.UserId == userId);
+
+            if (student == null)
+            {
+                return NotFound("Öğrenci bulunamadı");
+            }
+
+            // Aynı sürücü kursundaki aktif eğitmenleri al
+            var instructors = await _db.Instructors
+                .Include(i => i.User)
+                .Where(i => i.DrivingSchoolId == student.DrivingSchoolId && i.IsActive)
+                .Select(i => new
+                {
+                    id = i.Id,
+                    userId = i.UserId,
+                    fullName = i.User.FullName,
+                    email = i.User.Email,
+                    phone = i.User.Phone,
+                    specialization = i.Specialization,
+                    experience = i.Experience,
+                    rating = i.Rating,
+                    branch = i.Branch.ToString(),
+                    hireDate = i.HireDate,
+                    isAvailable = true // TODO: Gerçek müsaitlik kontrolü
+                })
+                .ToListAsync();
+
+            return Ok(new
+            {
+                studentId = student.Id,
+                drivingSchoolId = student.DrivingSchoolId,
+                instructors = instructors,
+                totalInstructors = instructors.Count
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Eğitmen listesi alınırken hata oluştu: {ex.Message}");
+        }
+    }
+
+    [HttpGet("available-slots/{instructorId}")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> GetAvailableSlots(Guid instructorId, [FromQuery] DateTime date)
+    {
+        try
+        {
+            // JWT token'dan student ID'yi al
+            var userIdClaim = User.FindFirst("UserId");
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return BadRequest("User ID bulunamadı");
+            }
+
+            // Öğrenciyi bul
+            var student = await _db.Students
+                .FirstOrDefaultAsync(s => s.UserId == userId);
+
+            if (student == null)
+            {
+                return NotFound("Öğrenci bulunamadı");
+            }
+
+            // Eğitmeni bul
+            var instructor = await _db.Instructors
+                .FirstOrDefaultAsync(i => i.Id == instructorId && i.DrivingSchoolId == student.DrivingSchoolId);
+
+            if (instructor == null)
+            {
+                return NotFound("Eğitmen bulunamadı");
+            }
+
+            // O gün için mevcut randevuları al
+            var existingSchedules = await _db.Schedules
+                .Where(s => s.InstructorId == instructorId && 
+                           s.ScheduledDate.Date == date.Date &&
+                           s.Status != ScheduleStatus.Cancelled)
+                .ToListAsync();
+
+            // Müsait saatleri oluştur (09:00-18:00 arası, 1 saatlik slotlar)
+            var availableSlots = new List<object>();
+            var startHour = 9;
+            var endHour = 18;
+
+            for (int hour = startHour; hour < endHour; hour++)
+            {
+                var slotStart = date.Date.AddHours(hour);
+                var slotEnd = slotStart.AddHours(1);
+
+                // Bu slot'ta randevu var mı kontrol et
+                var hasConflict = existingSchedules.Any(s => 
+                    s.ScheduledDate < slotEnd && 
+                    s.ScheduledDate.AddMinutes(s.Duration) > slotStart);
+
+                if (!hasConflict)
+                {
+                    availableSlots.Add(new
+                    {
+                        startTime = slotStart,
+                        endTime = slotEnd,
+                        duration = 60,
+                        isAvailable = true
+                    });
+                }
+            }
+
+            return Ok(new
+            {
+                instructorId = instructorId,
+                instructorName = instructor.User.FullName,
+                date = date.Date,
+                availableSlots = availableSlots,
+                totalSlots = availableSlots.Count
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Müsait saatler alınırken hata oluştu: {ex.Message}");
+        }
+    }
+
+    [HttpPost("book-lesson")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> BookLesson([FromBody] BookLessonRequest request)
+    {
+        try
+        {
+            // JWT token'dan student ID'yi al
+            var userIdClaim = User.FindFirst("UserId");
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return BadRequest("User ID bulunamadı");
+            }
+
+            // Öğrenciyi bul
+            var student = await _db.Students
+                .FirstOrDefaultAsync(s => s.UserId == userId);
+
+            if (student == null)
+            {
+                return NotFound("Öğrenci bulunamadı");
+            }
+
+            // Eğitmeni bul
+            var instructor = await _db.Instructors
+                .FirstOrDefaultAsync(i => i.Id == request.InstructorId && i.DrivingSchoolId == student.DrivingSchoolId);
+
+            if (instructor == null)
+            {
+                return NotFound("Eğitmen bulunamadı");
+            }
+
+            // Randevu çakışması kontrolü
+            var conflictingSchedule = await _db.Schedules
+                .FirstOrDefaultAsync(s => 
+                    s.InstructorId == request.InstructorId &&
+                    s.ScheduledDate < request.ScheduledDate.AddMinutes(request.Duration) &&
+                    s.ScheduledDate.AddMinutes(s.Duration) > request.ScheduledDate &&
+                    s.Status != ScheduleStatus.Cancelled);
+
+            if (conflictingSchedule != null)
+            {
+                return BadRequest("Seçilen saatte eğitmenin başka bir randevusu bulunmaktadır");
+            }
+
+            // Öğrencinin aynı saatte başka randevusu var mı kontrol et
+            var studentConflict = await _db.Schedules
+                .FirstOrDefaultAsync(s => 
+                    s.StudentId == student.Id &&
+                    s.ScheduledDate < request.ScheduledDate.AddMinutes(request.Duration) &&
+                    s.ScheduledDate.AddMinutes(s.Duration) > request.ScheduledDate &&
+                    s.Status != ScheduleStatus.Cancelled);
+
+            if (studentConflict != null)
+            {
+                return BadRequest("Seçilen saatte başka bir randevunuz bulunmaktadır");
+            }
+
+            // Randevu oluştur
+            var schedule = new Schedule
+            {
+                Id = Guid.NewGuid(),
+                StudentId = student.Id,
+                InstructorId = request.InstructorId,
+                DrivingSchoolId = student.DrivingSchoolId,
+                LessonType = (Domain.Entities.LessonType)request.LessonType,
+                ScheduledDate = request.ScheduledDate,
+                Duration = request.Duration,
+                Status = ScheduleStatus.Scheduled,
+                Notes = request.Notes,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _db.Schedules.Add(schedule);
+            await _db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                id = schedule.Id,
+                studentId = schedule.StudentId,
+                instructorId = schedule.InstructorId,
+                lessonType = schedule.LessonType.ToString(),
+                scheduledDate = schedule.ScheduledDate,
+                duration = schedule.Duration,
+                status = schedule.Status.ToString(),
+                notes = schedule.Notes,
+                message = "Randevu başarıyla oluşturuldu"
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Randevu oluşturulurken hata oluştu: {ex.Message}");
+        }
+    }
+
+    [HttpGet("my-schedules")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> GetMySchedules()
+    {
+        try
+        {
+            // JWT token'dan student ID'yi al
+            var userIdClaim = User.FindFirst("UserId");
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return BadRequest("User ID bulunamadı");
+            }
+
+            // Öğrenciyi bul
+            var student = await _db.Students
+                .FirstOrDefaultAsync(s => s.UserId == userId);
+
+            if (student == null)
+            {
+                return NotFound("Öğrenci bulunamadı");
+            }
+
+            // Öğrencinin randevularını al
+            var schedules = await _db.Schedules
+                .Include(s => s.Instructor)
+                .ThenInclude(i => i.User)
+                .Where(s => s.StudentId == student.Id)
+                .OrderBy(s => s.ScheduledDate)
+                .Select(s => new
+                {
+                    id = s.Id,
+                    instructor = new
+                    {
+                        id = s.Instructor.Id,
+                        fullName = s.Instructor.User.FullName,
+                        specialization = s.Instructor.Specialization,
+                        phone = s.Instructor.User.Phone
+                    },
+                    lessonType = s.LessonType.ToString(),
+                    scheduledDate = s.ScheduledDate,
+                    duration = s.Duration,
+                    status = s.Status.ToString(),
+                    notes = s.Notes,
+                    createdAt = s.CreatedAt
+                })
+                .ToListAsync();
+
+            return Ok(new
+            {
+                studentId = student.Id,
+                schedules = schedules,
+                totalSchedules = schedules.Count
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Randevu listesi alınırken hata oluştu: {ex.Message}");
+        }
+    }
+
+    [HttpPut("schedule/{scheduleId}/cancel")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> CancelSchedule(Guid scheduleId)
+    {
+        try
+        {
+            // JWT token'dan student ID'yi al
+            var userIdClaim = User.FindFirst("UserId");
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return BadRequest("User ID bulunamadı");
+            }
+
+            // Öğrenciyi bul
+            var student = await _db.Students
+                .FirstOrDefaultAsync(s => s.UserId == userId);
+
+            if (student == null)
+            {
+                return NotFound("Öğrenci bulunamadı");
+            }
+
+            // Randevuyu bul
+            var schedule = await _db.Schedules
+                .FirstOrDefaultAsync(s => s.Id == scheduleId && s.StudentId == student.Id);
+
+            if (schedule == null)
+            {
+                return NotFound("Randevu bulunamadı");
+            }
+
+            // Randevu iptal edilebilir mi kontrol et (24 saat öncesi)
+            if (schedule.ScheduledDate <= DateTime.UtcNow.AddHours(24))
+            {
+                return BadRequest("Randevu iptali için en az 24 saat önceden haber vermeniz gerekmektedir");
+            }
+
+            // Randevuyu iptal et
+            schedule.Status = ScheduleStatus.Cancelled;
+            await _db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                id = schedule.Id,
+                status = schedule.Status.ToString(),
+                message = "Randevu başarıyla iptal edildi"
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Randevu iptal edilirken hata oluştu: {ex.Message}");
         }
     }
 } 

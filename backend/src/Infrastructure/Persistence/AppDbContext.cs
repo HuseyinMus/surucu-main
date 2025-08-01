@@ -17,12 +17,14 @@ public class AppDbContext : DbContext
     public DbSet<QuizQuestion> QuizQuestions => Set<QuizQuestion>();
     public DbSet<QuizOption> QuizOptions => Set<QuizOption>();
     public DbSet<QuizResult> QuizResults => Set<QuizResult>();
+    public DbSet<QuizSession> QuizSessions => Set<QuizSession>();
     public DbSet<Schedule> Schedules => Set<Schedule>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<StudentProgress> StudentProgresses => Set<StudentProgress>();
     public DbSet<StudentAnalytics> StudentAnalytics => Set<StudentAnalytics>();
+    public DbSet<ExamResult> ExamResults => Set<ExamResult>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -106,17 +108,22 @@ public class AppDbContext : DbContext
             .WithOne(p => p.Student)
             .HasForeignKey(p => p.StudentId);
 
+        modelBuilder.Entity<Student>()
+            .HasMany(s => s.ExamResults)
+            .WithOne(er => er.Student)
+            .HasForeignKey(er => er.StudentId);
+
         // Instructor - Schedules 1-n
         modelBuilder.Entity<Instructor>()
             .HasMany(i => i.Schedules)
             .WithOne(sc => sc.Instructor)
             .HasForeignKey(sc => sc.InstructorId);
 
-        // Schedule - Course 1-n
+        // Schedule - DrivingSchool 1-n
         modelBuilder.Entity<Schedule>()
-            .HasOne(sc => sc.Course)
+            .HasOne(sc => sc.DrivingSchool)
             .WithMany()
-            .HasForeignKey(sc => sc.CourseId);
+            .HasForeignKey(sc => sc.DrivingSchoolId);
 
         // Notification - User 1-n
         modelBuilder.Entity<Notification>()
