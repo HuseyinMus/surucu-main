@@ -47,48 +47,59 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
       });
 
       final courseId = widget.course['id'];
-      if (courseId != null) {
-        final detail = await ApiService.getCourseDetail(courseId);
-        
-        if (detail != null) {
-          // Kullanıcı bilgilerini al
-          final userProfile = await ApiService.getSavedUserProfile();
-          final studentId = userProfile?['id']?.toString() ?? '';
+      if (courseId == null) {
+        throw Exception('Kurs ID bulunamadı. Lütfen kursu tekrar seçin.');
+      }
 
-          // Progress verilerini API'den al
-          List<Map<String, dynamic>> progressData = [];
+      final detail = await ApiService.getCourseDetail(courseId);
+      
+      if (detail != null) {
+        // Kullanıcı bilgilerini al
+        final userProfile = await ApiService.getSavedUserProfile();
+        final studentId = userProfile?['id']?.toString() ?? '';
+
+        // Progress verilerini API'den al
+        Map<String, dynamic>? progressData;
+        if (studentId.isNotEmpty) {
+          progressData = await ApiService.getCourseProgress(studentId, courseId.toString());
+          print('📊 Progress data: $progressData');
+        }
+
+        // Progress verilerini course contents ile birleştir
+        final contents = detail['courseContents'] ?? [];
+        final updatedContents = await Future.wait(contents.map((content) async {
+          // Her content için ayrı progress verisi al
+          Map<String, dynamic>? contentProgressData;
           if (studentId.isNotEmpty) {
-            progressData = await ApiService.getCourseProgress(studentId, courseId.toString()) ?? [];
+            contentProgressData = await ApiService.getContentProgress(
+              studentId, 
+              courseId.toString(), 
+              content['id'].toString()
+            );
+            print('📊 Content ${content['id']} progress: $contentProgressData');
           }
 
-          // Progress verilerini course contents ile birleştir
-          final contents = detail['courseContents'] ?? [];
-          final updatedContents = contents.map((content) {
-            final progress = progressData.firstWhere(
-              (p) => p['courseContentId'] == content['id'],
-              orElse: () => {},
-            );
+          final isCompleted = contentProgressData != null ? (contentProgressData['isCompleted'] ?? false) : false;
+          final progress = contentProgressData != null ? (contentProgressData['progress'] ?? 0) : 0;
+          final timeSpent = contentProgressData != null ? (contentProgressData['timeSpent'] ?? 0) : 0;
 
-            return {
-              ...content,
-              'isCompleted': progress['isCompleted'] ?? false,
-              'progress': progress['progress'] ?? 0,
-              'timeSpent': progress['timeSpent'] ?? 0,
-              'completedAt': progress['completedAt'],
-              'attempts': progress['attempts'] ?? 0,
-            };
-          }).toList();
+          return {
+            ...content,
+            'isCompleted': isCompleted,
+            'progress': progress,
+            'timeSpent': timeSpent,
+            'completedAt': contentProgressData?['completedAt'],
+            'attempts': contentProgressData != null ? (contentProgressData['attempts'] ?? 0) : 0,
+          };
+        }));
 
-          setState(() {
-            courseDetail = detail;
-            lessons = _processCourseContents(updatedContents);
-            isLoading = false;
-          });
-        } else {
-          throw Exception('Kurs detayları yüklenemedi');
-        }
+        setState(() {
+          courseDetail = detail;
+          lessons = _processCourseContents(updatedContents);
+          isLoading = false;
+        });
       } else {
-        throw Exception('Kurs ID bulunamadı');
+        throw Exception('Kurs detayları yüklenemedi. Lütfen internet bağlantınızı kontrol edin.');
       }
     } catch (e) {
       setState(() {
@@ -100,7 +111,7 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
   }
 
   List<Map<String, dynamic>> _processCourseContents(List<dynamic> contents) {
-    return contents.asMap().entries.map((entry) {
+    final processedContents = contents.asMap().entries.map((entry) {
       final index = entry.key;
       final content = entry.value;
       
@@ -110,12 +121,19 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
         'description': content['description'] ?? '',
         'duration': _formatDuration(content['duration']),
         'isCompleted': content['isCompleted'] ?? false, // API'den gelen veri kullanılıyor
-        'isLocked': index > 2, // İlk 3 ders açık, diğerleri kilitli
         'type': _mapContentType(content['contentType']),
         'contentUrl': content['contentUrl'],
         'order': content['order'] ?? index,
       };
     }).toList()..sort((a, b) => (a['order'] as int).compareTo(b['order'] as int));
+    
+    // Şimdi isLocked değerlerini hesapla
+    for (int i = 0; i < processedContents.length; i++) {
+      final content = processedContents[i];
+      content['isLocked'] = _isContentLocked(content, i);
+    }
+    
+    return processedContents;
   }
 
   String _formatDuration(dynamic duration) {
@@ -154,6 +172,42 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
       default:
         return 'video';
     }
+  }
+
+  bool _isContentLocked(Map<String, dynamic> content, int index) {
+    // İlk content her zaman açık
+    if (index == 0) return false;
+    
+    // Content zaten tamamlanmışsa açık
+    if (content['isCompleted'] == true) {
+      return false;
+    }
+    
+    // Önceki content tamamlanmışsa bu content açık
+    if (index > 0 && index < lessons.length) {
+      final previousContent = lessons[index - 1];
+      if (previousContent['isCompleted'] == true) {
+        return false;
+      }
+    }
+    
+    // Diğer durumlarda kilitli
+    return true;
+  }
+
+  int _calculateOverallProgress() {
+    if (lessons.isEmpty) return 0;
+    
+    int completedLessons = 0;
+    for (final lesson in lessons) {
+      if (lesson['isCompleted'] == true) {
+        completedLessons++;
+      }
+    }
+    
+    final progress = ((completedLessons / lessons.length) * 100).round();
+    
+    return progress;
   }
 
   @override
@@ -343,7 +397,7 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
                 ),
               ),
               Text(
-                '%${widget.course['progress']}',
+                '%${_calculateOverallProgress()}',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -358,7 +412,7 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
-              value: widget.course['progress'] / 100,
+              value: _calculateOverallProgress() / 100,
               backgroundColor: Colors.grey[200],
               valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
               minHeight: 6,
@@ -957,8 +1011,9 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
   }
 
   Widget _buildBottomActionButton() {
-    final isCompleted = widget.course['progress'] == 100;
-    final isStarted = widget.course['progress'] > 0;
+    final overallProgress = _calculateOverallProgress();
+    final isCompleted = overallProgress == 100;
+    final isStarted = overallProgress > 0;
     
     return Container(
       padding: const EdgeInsets.all(16),
@@ -977,13 +1032,9 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
         width: double.infinity,
         height: 50,
         child: ElevatedButton(
-          onPressed: () {
+          onPressed: lessons.isNotEmpty ? () {
             // İlk dersi başlat
-            final firstLesson = lessons.isNotEmpty ? lessons[0] : {
-              'title': 'İlk Ders',
-              'duration': '12:30',
-              'type': 'video',
-            };
+            final firstLesson = lessons[0];
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -993,7 +1044,7 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
                 ),
               ),
             );
-          },
+          } : null, // Ders yoksa butonu devre dışı bırak
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.blue[600],
             foregroundColor: Colors.white,
@@ -1003,11 +1054,13 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
             elevation: 0,
           ),
           child: Text(
-            isCompleted 
-                ? 'Tekrar İzle' 
-                : isStarted 
-                    ? 'Devam Et' 
-                    : 'Kursu Başlat',
+            lessons.isEmpty 
+                ? 'Ders Bulunamadı'
+                : isCompleted 
+                    ? 'Tekrar İzle' 
+                    : isStarted 
+                        ? 'Devam Et' 
+                        : 'Kursu Başlat',
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,

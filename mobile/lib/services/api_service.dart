@@ -101,101 +101,9 @@ class ApiService {
     }
   }
 
-  // TEST KULLANICI OLUŞTUR
-  static Future<Map<String, dynamic>?> createTestUser() async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/create-test-user'),
-        headers: _headers,
-      );
 
-      print('Create test user API response status: ${response.statusCode}');
-      print('Create test user API response body: ${response.body}');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data;
-      } else {
-        print('Create test user failed: ${response.body}');
-        return null;
-      }
-    } catch (e) {
-      print('Create test user hatası: $e');
-      return null;
-    }
-  }
 
-  // TEST API BAĞLANTISI
-  static Future<Map<String, dynamic>?> testApiConnection() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/test'),
-        headers: _headers,
-      );
-
-      print('Test API response status: ${response.statusCode}');
-      print('Test API response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data;
-      } else {
-        print('Test API failed: ${response.body}');
-        return null;
-      }
-    } catch (e) {
-      print('Test API hatası: $e');
-      return null;
-    }
-  }
-
-  // DEBUG: KULLANICILARI LİSTELE
-  static Future<Map<String, dynamic>?> debugUsers() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/auth/debug-users'),
-        headers: _headers,
-      );
-
-      print('Debug users API response status: ${response.statusCode}');
-      print('Debug users API response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data;
-      } else {
-        print('Debug users failed: ${response.body}');
-        return null;
-      }
-    } catch (e) {
-      print('Debug users hatası: $e');
-      return null;
-    }
-  }
-
-  // ÖĞRENCİ TC NUMARALARINI DÜZELT
-  static Future<Map<String, dynamic>?> fixStudentTc() async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/students/fix-student-tc'),
-        headers: _headers,
-      );
-
-      print('Fix student TC API response status: ${response.statusCode}');
-      print('Fix student TC API response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data;
-      } else {
-        print('Fix student TC failed: ${response.body}');
-        return null;
-      }
-    } catch (e) {
-      print('Fix student TC hatası: $e');
-      return null;
-    }
-  }
 
   // LOGOUT
   static Future<bool> logout() async {
@@ -331,12 +239,36 @@ class ApiService {
     }
   }
 
+  // QUIZ SORULARINI GETİR
+  static Future<List<Map<String, dynamic>>?> getQuizQuestions(String quizId) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.get(
+        Uri.parse('$baseUrl/quizzes/$quizId/questions'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is List) {
+          return List<Map<String, dynamic>>.from(data);
+        }
+        return [];
+      }
+      print('Quiz questions API response status: ${response.statusCode}');
+      return null;
+    } catch (e) {
+      print('Quiz questions hatası: $e');
+      return null;
+    }
+  }
+
   // ÖĞRENCİ PROGRESS
   static Future<Map<String, dynamic>?> getStudentProgress(String studentId, String courseId) async {
     try {
       final headers = await _authenticatedHeaders;
       final response = await http.get(
-        Uri.parse('$baseUrl/progress/summary/$studentId/$courseId'),
+        Uri.parse('$baseUrl/studentprogress/course/$studentId/$courseId'),
         headers: headers,
       );
 
@@ -499,7 +431,7 @@ class ApiService {
     try {
       final headers = await _authenticatedHeaders;
       final response = await http.get(
-        Uri.parse('$baseUrl/progress/summary/$studentId/$courseId'),
+        Uri.parse('$baseUrl/studentprogress/course/$studentId/$courseId'),
         headers: headers,
       );
 
@@ -516,19 +448,21 @@ class ApiService {
   }
 
   // Kurs progress detayı
-  static Future<List<Map<String, dynamic>>?> getCourseProgress(String studentId, String courseId) async {
+  static Future<Map<String, dynamic>?> getCourseProgress(String studentId, String courseId) async {
     try {
       final headers = await _authenticatedHeaders;
+      // StudentId parametresini kaldır, backend JWT token'dan alacak
       final response = await http.get(
-        Uri.parse('$baseUrl/progress/lessons/$studentId/$courseId'),
+        Uri.parse('$baseUrl/studentprogress/course/$courseId'),
         headers: headers,
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.cast<Map<String, dynamic>>();
+        // Backend tek bir obje döndürüyor, liste değil
+        return jsonDecode(response.body);
       }
       print('Course progress API response status: ${response.statusCode}');
+      print('Course progress API response body: ${response.body}');
       return null;
     } catch (e) {
       print('Course progress hatası: $e');
@@ -541,7 +475,7 @@ class ApiService {
     try {
       final headers = await _authenticatedHeaders;
       final response = await http.get(
-        Uri.parse('$baseUrl/progress/quiz/$studentId/$quizId'),
+        Uri.parse('$baseUrl/quizzes/progress/$studentId/$quizId'),
         headers: headers,
       );
 
@@ -560,8 +494,9 @@ class ApiService {
   static Future<Map<String, dynamic>?> getDashboardProgress(String studentId) async {
     try {
       final headers = await _authenticatedHeaders;
+      // StudentId parametresini kaldır, backend JWT token'dan alacak
       final response = await http.get(
-        Uri.parse('$baseUrl/progress/analytics/$studentId'),
+        Uri.parse('$baseUrl/studentprogress/dashboard'),
         headers: headers,
       );
 
@@ -569,6 +504,7 @@ class ApiService {
         return jsonDecode(response.body);
       }
       print('Dashboard progress API response status: ${response.statusCode}');
+      print('Dashboard progress API response body: ${response.body}');
       return null;
     } catch (e) {
       print('Dashboard progress hatası: $e');
@@ -577,15 +513,15 @@ class ApiService {
   }
 
   // Ders tamamlama
-  static Future<bool> completeLesson(String studentId, String courseContentId) async {
+  static Future<bool> completeLesson(String studentId, String courseId) async {
     try {
       final headers = await _authenticatedHeaders;
       final response = await http.post(
-        Uri.parse('$baseUrl/progress/complete-lesson'),
+        Uri.parse('$baseUrl/studentprogress/complete-lesson'),
         headers: headers,
         body: jsonEncode({
-          'studentId': studentId,
-          'courseContentId': courseContentId,
+          'courseId': courseId,
+          'timeSpent': 0,
         }),
       );
 
@@ -601,12 +537,14 @@ class ApiService {
     try {
       final headers = await _authenticatedHeaders;
       final response = await http.post(
-        Uri.parse('$baseUrl/progress/quiz-result'),
+        Uri.parse('$baseUrl/quizzes/$quizId/submit'),
         headers: headers,
         body: jsonEncode({
-          'studentId': studentId,
-          'quizId': quizId,
           'score': score,
+          'totalQuestions': 10, // Şimdilik sabit
+          'correctAnswers': (score / 10).round(), // Şimdilik basit hesaplama
+          'timeSpent': 0,
+          'answers': [],
         }),
       );
 
@@ -618,15 +556,14 @@ class ApiService {
   }
 
   // Progress güncelleme
-  static Future<bool> updateProgress(String studentId, String courseContentId, int progress, int timeSpent) async {
+  static Future<bool> updateProgress(String studentId, String courseId, int progress, int timeSpent) async {
     try {
       final headers = await _authenticatedHeaders;
       final response = await http.post(
-        Uri.parse('$baseUrl/progress/update'),
+        Uri.parse('$baseUrl/studentprogress/update'),
         headers: headers,
         body: jsonEncode({
-          'studentId': studentId,
-          'courseContentId': courseContentId,
+          'courseId': courseId,
           'progress': progress,
           'timeSpent': timeSpent,
         }),
@@ -644,12 +581,17 @@ class ApiService {
     try {
       final headers = await _authenticatedHeaders;
       final response = await http.get(
-        Uri.parse('$baseUrl/progress/overall-progress/$studentId/$courseId'),
+        Uri.parse('$baseUrl/studentprogress/course/$studentId/$courseId'),
         headers: headers,
       );
 
       if (response.statusCode == 200) {
-        return double.tryParse(response.body);
+        final data = jsonDecode(response.body);
+        // Progress bilgisini hesapla
+        if (data is Map<String, dynamic> && data.containsKey('progress')) {
+          return double.tryParse(data['progress'].toString());
+        }
+        return 0.0;
       }
       print('Overall progress API response status: ${response.statusCode}');
       return null;
@@ -659,27 +601,28 @@ class ApiService {
     }
   }
 
-  // Quiz sorularını getir
-  static Future<List<Map<String, dynamic>>?> getQuizQuestions(String quizId) async {
+  // Content progress verisi
+  static Future<Map<String, dynamic>?> getContentProgress(String studentId, String courseId, String contentId) async {
     try {
       final headers = await _authenticatedHeaders;
       final response = await http.get(
-        Uri.parse('$baseUrl/quizzes/$quizId/questions'),
+        Uri.parse('$baseUrl/studentprogress/content/$studentId/$courseId/$contentId'),
         headers: headers,
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.cast<Map<String, dynamic>>();
+        final data = jsonDecode(response.body);
+        return data;
       }
-      print('Quiz questions API response status: ${response.statusCode}');
-      print('Quiz questions API response body: ${response.body}');
+      print('Content progress API response status: ${response.statusCode}');
       return null;
     } catch (e) {
-      print('Quiz questions hatası: $e');
+      print('Content progress hatası: $e');
       return null;
     }
   }
+
+
 
   // SÜRÜCÜ KURSU BİLGİLERİ
   static Future<Map<String, dynamic>?> getDrivingSchoolInfo() async {
@@ -706,4 +649,351 @@ class ApiService {
       return null;
     }
   }
+
+  // EĞİTMEN GİRİŞİ VE YÖNETİMİ
+
+  // Eğitmen TC ile giriş
+  static Future<Map<String, dynamic>?> loginInstructorWithTc(String tc) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/login-instructor-tc'),
+        headers: _headers,
+        body: jsonEncode({
+          'TcNumber': tc,
+        }),
+      );
+
+      print('Instructor login API response status: ${response.statusCode}');
+      print('Instructor login API response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['token'] != null) {
+          await saveToken(data['token']);
+          
+          // Eğitmen bilgilerini kaydet
+          final instructorProfile = {
+            'id': data['userId'],
+            'instructorId': data['instructorId'],
+            'fullName': data['fullName'],
+            'email': data['email'],
+            'role': data['role'],
+            'drivingSchoolId': data['drivingSchoolId'],
+            'specialization': data['specialization'],
+            'experience': data['experience'],
+            'tcNumber': tc,
+            'drivingSchool': data['drivingSchool'],
+            'createdAt': DateTime.now().toIso8601String(),
+          };
+          await saveUserProfile(instructorProfile);
+        }
+        return data;
+      } else {
+        print('Instructor login failed: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Instructor login hatası: $e');
+      return null;
+    }
+  }
+
+  // Eğitmenin öğrencilerini getir
+  static Future<Map<String, dynamic>?> getMyStudents() async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.get(
+        Uri.parse('$baseUrl/instructors/my-students'),
+        headers: headers,
+      );
+
+      print('My students API response status: ${response.statusCode}');
+      print('My students API response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        print('My students API response error: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('My students hatası: $e');
+      return null;
+    }
+  }
+
+  // Öğrenci detaylarını getir
+  static Future<Map<String, dynamic>?> getStudentDetails(String studentId) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.get(
+        Uri.parse('$baseUrl/instructors/student/$studentId'),
+        headers: headers,
+      );
+
+      print('Student details API response status: ${response.statusCode}');
+      print('Student details API response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        print('Student details API response error: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Student details hatası: $e');
+      return null;
+    }
+  }
+
+  // Öğrenci için randevu oluştur
+  static Future<Map<String, dynamic>?> scheduleStudentLesson(String studentId, Map<String, dynamic> scheduleData) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.post(
+        Uri.parse('$baseUrl/instructors/student/$studentId/schedule'),
+        headers: headers,
+        body: jsonEncode(scheduleData),
+      );
+
+      print('Schedule lesson API response status: ${response.statusCode}');
+      print('Schedule lesson API response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        print('Schedule lesson API response error: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Schedule lesson hatası: $e');
+      return null;
+    }
+  }
+
+  // Eğitmenin randevularını getir
+  static Future<Map<String, dynamic>?> getMySchedules() async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.get(
+        Uri.parse('$baseUrl/instructors/my-schedules'),
+        headers: headers,
+      );
+
+      print('My schedules API response status: ${response.statusCode}');
+      print('My schedules API response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        print('My schedules API response error: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('My schedules hatası: $e');
+      return null;
+    }
+  }
+
+
+
+  // ÖĞRENCİ RANDEVU YÖNETİMİ
+
+  // Müsait eğitmenleri getir
+  static Future<Map<String, dynamic>?> getAvailableInstructors() async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.get(
+        Uri.parse('$baseUrl/students/available-instructors'),
+        headers: headers,
+      );
+
+      print('Available instructors API response status: ${response.statusCode}');
+      print('Available instructors API response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        print('Available instructors API response error: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Available instructors hatası: $e');
+      return null;
+    }
+  }
+
+  // Eğitmenin müsait saatlerini getir
+  static Future<Map<String, dynamic>?> getAvailableSlots(String instructorId, DateTime date) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final dateString = date.toIso8601String().split('T')[0]; // YYYY-MM-DD formatı
+      final response = await http.get(
+        Uri.parse('$baseUrl/students/available-slots/$instructorId?date=$dateString'),
+        headers: headers,
+      );
+
+      print('Available slots API response status: ${response.statusCode}');
+      print('Available slots API response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        print('Available slots API response error: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Available slots hatası: $e');
+      return null;
+    }
+  }
+
+  // Ders randevusu al
+  static Future<Map<String, dynamic>?> bookLesson(Map<String, dynamic> lessonData) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.post(
+        Uri.parse('$baseUrl/students/book-lesson'),
+        headers: headers,
+        body: jsonEncode(lessonData),
+      );
+
+      print('Book lesson API response status: ${response.statusCode}');
+      print('Book lesson API response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        print('Book lesson API response error: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Book lesson hatası: $e');
+      return null;
+    }
+  }
+
+  // Öğrencinin randevularını getir
+  static Future<Map<String, dynamic>?> getStudentSchedules() async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.get(
+        Uri.parse('$baseUrl/students/my-schedules'),
+        headers: headers,
+      );
+
+      print('Student schedules API response status: ${response.statusCode}');
+      print('Student schedules API response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        print('Student schedules API response error: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Student schedules hatası: $e');
+      return null;
+    }
+  }
+
+  // Randevu iptal et
+  static Future<Map<String, dynamic>?> cancelSchedule(String scheduleId) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.put(
+        Uri.parse('$baseUrl/students/schedule/$scheduleId/cancel'),
+        headers: headers,
+      );
+
+      print('Cancel schedule API response status: ${response.statusCode}');
+      print('Cancel schedule API response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        print('Cancel schedule API response error: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Cancel schedule hatası: $e');
+      return null;
+    }
+  }
+
+  // EĞİTMEN RANDEVU YÖNETİMİ
+
+  // Randevu onayla
+  static Future<Map<String, dynamic>?> approveSchedule(String scheduleId) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.put(
+        Uri.parse('$baseUrl/instructors/schedule/$scheduleId/approve'),
+        headers: headers,
+      );
+
+      print('Approve schedule API response status: ${response.statusCode}');
+      print('Approve schedule API response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        print('Approve schedule API response error: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Approve schedule hatası: $e');
+      return null;
+    }
+  }
+
+  // Randevu reddet
+  static Future<Map<String, dynamic>?> rejectSchedule(String scheduleId, String reason) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.put(
+        Uri.parse('$baseUrl/instructors/schedule/$scheduleId/reject'),
+        headers: headers,
+        body: jsonEncode({'reason': reason}),
+      );
+
+      print('Reject schedule API response status: ${response.statusCode}');
+      print('Reject schedule API response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        print('Reject schedule API response error: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Reject schedule hatası: $e');
+      return null;
+    }
+  }
+
+  // Randevu tamamla
+  static Future<Map<String, dynamic>?> completeSchedule(String scheduleId) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.put(
+        Uri.parse('$baseUrl/instructors/schedule/$scheduleId/complete'),
+        headers: headers,
+      );
+
+      print('Complete schedule API response status: ${response.statusCode}');
+      print('Complete schedule API response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        print('Complete schedule API response error: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Complete schedule hatası: $e');
+      return null;
+    }
+  }
+
 } 

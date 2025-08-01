@@ -7,6 +7,20 @@ node_modules/
 */obj/
 */build/
 */dist/
+**/bin/
+**/obj/
+**/build/
+**/dist/
+
+# Flutter specific
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+*.lock
 
 # IDE files
 .vscode/
@@ -36,4 +50,12 @@ backend/src/WebAPI/uploads/*.pdf
 
 # Temporary files
 *.tmp
-*.temp 
+*.temp
+
+# .NET specific
+*.user
+*.suo
+*.cache
+*.pdb
+*.dll
+*.exe 
