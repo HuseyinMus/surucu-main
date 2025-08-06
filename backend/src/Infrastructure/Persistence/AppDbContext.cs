@@ -30,6 +30,8 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+
+
         // User - Student/Instructor 1-1
         modelBuilder.Entity<User>()
             .HasOne(u => u.Student)
@@ -87,7 +89,7 @@ public class AppDbContext : DbContext
             .WithOne(qo => qo.Question)
             .HasForeignKey(qo => qo.QuestionId);
 
-        // Student - QuizResults/Schedules/Documents/Payments 1-n
+        // Student - QuizResults/Schedules/Documents/Payments/ExamResults/StudentProgresses 1-n
         modelBuilder.Entity<Student>()
             .HasMany(s => s.QuizResults)
             .WithOne(qr => qr.Student)
@@ -113,6 +115,12 @@ public class AppDbContext : DbContext
             .WithOne(er => er.Student)
             .HasForeignKey(er => er.StudentId);
 
+        modelBuilder.Entity<Student>()
+            .HasMany(s => s.StudentProgresses)
+            .WithOne(sp => sp.Student)
+            .HasForeignKey(sp => sp.StudentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Instructor - Schedules 1-n
         modelBuilder.Entity<Instructor>()
             .HasMany(i => i.Schedules)
@@ -131,20 +139,25 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(n => n.UserId);
 
-        // StudentProgress - Student/CourseContent
-        modelBuilder.Entity<StudentProgress>()
-            .HasOne(sp => sp.Student)
-            .WithMany()
-            .HasForeignKey(sp => sp.StudentId);
+        // StudentProgress - CourseContent
         modelBuilder.Entity<StudentProgress>()
             .HasOne(sp => sp.CourseContent)
             .WithMany()
-            .HasForeignKey(sp => sp.CourseContentId);
+            .HasForeignKey(sp => sp.ContentId)
+            .OnDelete(DeleteBehavior.Cascade);
 
+        // StudentProgress - Course
+        modelBuilder.Entity<StudentProgress>()
+            .HasOne(sp => sp.Course)
+            .WithMany()
+            .HasForeignKey(sp => sp.CourseId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // CourseContent - Quiz 1-n (Quiz opsiyonel)
         modelBuilder.Entity<CourseContent>()
             .HasOne(cc => cc.Quiz)
             .WithMany()
             .HasForeignKey(cc => cc.QuizId)
             .OnDelete(DeleteBehavior.SetNull);
     }
-} 
+}

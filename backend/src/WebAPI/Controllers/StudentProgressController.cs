@@ -175,7 +175,8 @@ public class StudentProgressController : ControllerBase
                 {
                     Id = Guid.NewGuid(),
                     StudentId = student.Id, // student.Id kullan
-                    CourseContentId = courseContent.Id,
+                    CourseId = courseId,
+                    ContentId = courseContent.Id,
                     Progress = 0,
                     TimeSpent = 0,
                     LastAccessed = DateTime.UtcNow
@@ -195,6 +196,158 @@ public class StudentProgressController : ControllerBase
         catch (Exception ex)
         {
             return BadRequest($"Kurs progress alınırken hata: {ex.Message}");
+        }
+    }
+
+    // CONTENT PROGRESS
+    [HttpGet("content/{studentId}/{courseId}/{contentId}")]
+    [Authorize(Roles = "Student,Instructor,Admin")]
+    public async Task<IActionResult> GetContentProgress(Guid studentId, Guid courseId, Guid contentId)
+    {
+        try
+        {
+            // Öğrenciyi kontrol et
+            var student = await _db.Students
+                .Include(s => s.User)
+                .FirstOrDefaultAsync(s => s.Id == studentId);
+            
+            if (student == null)
+            {
+                return NotFound("Öğrenci bulunamadı");
+            }
+
+            // Kursu kontrol et
+            var course = await _db.Courses
+                .Include(c => c.CourseContents)
+                .FirstOrDefaultAsync(c => c.Id == courseId);
+            
+            if (course == null)
+            {
+                return NotFound("Kurs bulunamadı");
+            }
+
+            // Content'i kontrol et
+            var content = course.CourseContents.FirstOrDefault(cc => cc.Id == contentId);
+            if (content == null)
+            {
+                return NotFound("İçerik bulunamadı");
+            }
+
+            // Progress verisini al veya oluştur
+            var progress = await _db.StudentProgresses
+                .FirstOrDefaultAsync(sp => 
+                    sp.StudentId == studentId && 
+                    sp.CourseId == courseId &&
+                    sp.ContentId == contentId);
+
+            if (progress == null)
+            {
+                // Yeni progress kaydı oluştur
+                progress = new StudentProgress
+                {
+                    Id = Guid.NewGuid(),
+                    StudentId = studentId,
+                    CourseId = courseId,
+                    ContentId = contentId,
+                    Progress = 0,
+                    TimeSpent = 0,
+                    IsCompleted = false,
+                    LastAccessed = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _db.StudentProgresses.Add(progress);
+                await _db.SaveChangesAsync();
+            }
+
+            var result = new
+            {
+                progress.Id,
+                progress.Progress,
+                progress.TimeSpent,
+                progress.IsCompleted,
+                progress.LastAccessed,
+                progress.CompletedAt,
+                progress.Attempts,
+                ContentTitle = content.Title,
+                ContentType = content.ContentType,
+                ContentUrl = content.ContentUrl
+            };
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"İçerik progress verisi alınırken hata oluştu: {ex.Message}");
+        }
+    }
+
+    // CONTENT PROGRESS UPDATE
+    [HttpPost("content/{studentId}/{courseId}/{contentId}/update")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> UpdateContentProgress(
+        Guid studentId, 
+        Guid courseId, 
+        Guid contentId,
+        [FromBody] ContentProgressUpdateRequest request)
+    {
+        try
+        {
+            var progress = await _db.StudentProgresses
+                .FirstOrDefaultAsync(sp => 
+                    sp.StudentId == studentId && 
+                    sp.CourseId == courseId &&
+                    sp.ContentId == contentId);
+
+            if (progress == null)
+            {
+                progress = new StudentProgress
+                {
+                    Id = Guid.NewGuid(),
+                    StudentId = studentId,
+                    CourseId = courseId,
+                    ContentId = contentId,
+                    Progress = 0,
+                    TimeSpent = 0,
+                    IsCompleted = false,
+                    LastAccessed = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _db.StudentProgresses.Add(progress);
+            }
+
+            // Progress verilerini güncelle
+            progress.Progress = request.Progress;
+            progress.TimeSpent += request.TimeSpent;
+            progress.LastAccessed = DateTime.UtcNow;
+            progress.Attempts = (progress.Attempts ?? 0) + 1;
+
+            // Eğer progress %100 ise tamamlandı olarak işaretle
+            if (request.Progress >= 100 && !progress.IsCompleted)
+            {
+                progress.IsCompleted = true;
+                progress.CompletedAt = DateTime.UtcNow;
+            }
+
+            await _db.SaveChangesAsync();
+
+            var result = new
+            {
+                progress.Id,
+                progress.Progress,
+                progress.TimeSpent,
+                progress.IsCompleted,
+                progress.LastAccessed,
+                progress.CompletedAt,
+                progress.Attempts
+            };
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"İçerik progress güncellenirken hata oluştu: {ex.Message}");
         }
     }
 
@@ -243,7 +396,8 @@ public class StudentProgressController : ControllerBase
                 {
                     Id = Guid.NewGuid(),
                     StudentId = student.Id, // student.Id kullan
-                    CourseContentId = courseContent.Id,
+                    CourseId = request.CourseId,
+                    ContentId = courseContent.Id,
                     Progress = request.Progress,
                     TimeSpent = request.TimeSpent,
                     LastAccessed = DateTime.UtcNow
@@ -312,7 +466,8 @@ public class StudentProgressController : ControllerBase
                 {
                     Id = Guid.NewGuid(),
                     StudentId = student.Id, // student.Id kullan
-                    CourseContentId = courseContent.Id,
+                    CourseId = request.CourseId,
+                    ContentId = courseContent.Id,
                     Progress = 100,
                     TimeSpent = request.TimeSpent,
                     LastAccessed = DateTime.UtcNow

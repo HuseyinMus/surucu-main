@@ -283,21 +283,102 @@ namespace Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AutomationRule")
+                        .HasColumnType("text");
+
+                    b.Property<double>("ClickRate")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("ClickedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("DrivingSchoolId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("text");
+
+                    b.Property<int>("FailedRecipients")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsAutomated")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastSentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MaxSendAttempts")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Message")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<DateTime>("SentAt")
+                    b.Property<string>("Metadata")
+                        .HasColumnType("text");
+
+                    b.Property<double>("OpenRate")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("OpenedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RecipientIds")
+                        .HasColumnType("text");
+
+                    b.Property<int>("RecipientType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RecurrenceDays")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("RecurrenceEndDate")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("RecurrenceInterval")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RecurrenceType")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ScheduleType")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ScheduledDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("SendAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("SentToRecipients")
+                        .HasColumnType("integer");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Tags")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TemplateId")
+                        .HasColumnType("text");
+
                     b.Property<string>("Title")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("TotalRecipients")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TriggerCondition")
                         .HasColumnType("text");
 
                     b.Property<int>("Type")
@@ -313,6 +394,100 @@ namespace Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("Domain.Entities.NotificationRecipient", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ClickedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("NotificationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("OpenedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NotificationId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("NotificationRecipient");
+                });
+
+            modelBuilder.Entity("Domain.Entities.NotificationTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("DrivingSchoolId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MessageTemplate")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("NotificationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TitleTemplate")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Variables")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DrivingSchoolId");
+
+                    b.HasIndex("NotificationId");
+
+                    b.ToTable("NotificationTemplate");
                 });
 
             modelBuilder.Entity("Domain.Entities.Payment", b =>
@@ -729,14 +904,20 @@ namespace Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<int>("Attempts")
+                    b.Property<int?>("Attempts")
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("CourseContentId")
+                    b.Property<Guid>("ContentId")
                         .HasColumnType("uuid");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsCompleted")
                         .HasColumnType("boolean");
@@ -756,9 +937,6 @@ namespace Infrastructure.Migrations
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("StudentId1")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("TimeSpent")
                         .HasColumnType("integer");
 
@@ -767,11 +945,11 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CourseContentId");
+                    b.HasIndex("ContentId");
+
+                    b.HasIndex("CourseId");
 
                     b.HasIndex("StudentId");
-
-                    b.HasIndex("StudentId1");
 
                     b.ToTable("StudentProgresses");
                 });
@@ -803,8 +981,14 @@ namespace Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("PasswordResetToken")
+                        .HasColumnType("text");
+
                     b.Property<string>("Phone")
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("ResetTokenExpires")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("Role")
                         .HasColumnType("integer");
@@ -914,6 +1098,40 @@ namespace Infrastructure.Migrations
                     b.Navigation("DrivingSchool");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Domain.Entities.NotificationRecipient", b =>
+                {
+                    b.HasOne("Domain.Entities.Notification", "Notification")
+                        .WithMany("Recipients")
+                        .HasForeignKey("NotificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Notification");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Domain.Entities.NotificationTemplate", b =>
+                {
+                    b.HasOne("Domain.Entities.DrivingSchool", "DrivingSchool")
+                        .WithMany()
+                        .HasForeignKey("DrivingSchoolId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Notification", null)
+                        .WithMany("Templates")
+                        .HasForeignKey("NotificationId");
+
+                    b.Navigation("DrivingSchool");
                 });
 
             modelBuilder.Entity("Domain.Entities.Payment", b =>
@@ -1081,19 +1299,23 @@ namespace Infrastructure.Migrations
                 {
                     b.HasOne("Domain.Entities.CourseContent", "CourseContent")
                         .WithMany()
-                        .HasForeignKey("CourseContentId")
+                        .HasForeignKey("ContentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Course", "Course")
+                        .WithMany()
+                        .HasForeignKey("CourseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Domain.Entities.Student", "Student")
-                        .WithMany()
+                        .WithMany("StudentProgresses")
                         .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Domain.Entities.Student", null)
-                        .WithMany("StudentProgresses")
-                        .HasForeignKey("StudentId1");
+                    b.Navigation("Course");
 
                     b.Navigation("CourseContent");
 
@@ -1130,6 +1352,13 @@ namespace Infrastructure.Migrations
             modelBuilder.Entity("Domain.Entities.Instructor", b =>
                 {
                     b.Navigation("Schedules");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Notification", b =>
+                {
+                    b.Navigation("Recipients");
+
+                    b.Navigation("Templates");
                 });
 
             modelBuilder.Entity("Domain.Entities.Quiz", b =>

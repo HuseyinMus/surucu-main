@@ -42,7 +42,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpPost("upload-media")]
-    [AllowAnonymous]
+    [Authorize(Roles = "Admin,Instructor")]
     public async Task<IActionResult> UploadMedia([FromForm] IFormFile? video, [FromForm] IFormFile? image, [FromForm] IFormFile? pdf)
     {
         var uploadRoot = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
@@ -375,6 +375,7 @@ public class CoursesController : ControllerBase
         course.VideoUrl = request.VideoUrl;
         course.ImageUrl = request.ImageUrl;
         course.PdfUrl = request.PdfUrl;
+        course.Tags = request.Tags;
         await _courseService.UpdateCourseAsync(course);
         return Ok(course);
     }

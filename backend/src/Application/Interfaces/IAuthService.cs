@@ -9,4 +9,7 @@ public interface IAuthService
     Task<AuthResponse> LoginAsync(LoginRequest request);
     Task<AuthResponse> LoginWithTcAsync(TcLoginRequest request);
     string GenerateJwtToken(User user);
-} 
+    Task<string> GeneratePasswordResetTokenAsync(string email);
+    Task<bool> ResetPasswordAsync(ResetPasswordRequest request);
+
+}

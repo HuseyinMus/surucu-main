@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'video_player_page.dart';
 import '../services/api_service.dart';
+import 'pdf_viewer_page.dart';
 
 class CourseDetailPage extends StatefulWidget {
   final Map<String, dynamic> course;
@@ -67,7 +68,9 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
 
         // Progress verilerini course contents ile birleştir
         final contents = detail['courseContents'] ?? [];
-        final updatedContents = await Future.wait(contents.map((content) async {
+        final updatedContents = <Map<String, dynamic>>[];
+        
+        for (final content in contents) {
           // Her content için ayrı progress verisi al
           Map<String, dynamic>? contentProgressData;
           if (studentId.isNotEmpty) {
@@ -83,15 +86,15 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
           final progress = contentProgressData != null ? (contentProgressData['progress'] ?? 0) : 0;
           final timeSpent = contentProgressData != null ? (contentProgressData['timeSpent'] ?? 0) : 0;
 
-          return {
+          updatedContents.add({
             ...content,
             'isCompleted': isCompleted,
             'progress': progress,
             'timeSpent': timeSpent,
             'completedAt': contentProgressData?['completedAt'],
             'attempts': contentProgressData != null ? (contentProgressData['attempts'] ?? 0) : 0,
-          };
-        }));
+          });
+        }
 
         setState(() {
           courseDetail = detail;
@@ -167,6 +170,9 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
       case 'text':
         return 'text';
       case '2':
+      case 'pdf':
+        return 'pdf';
+      case '3':
       case 'quiz':
         return 'quiz';
       default:
@@ -208,6 +214,66 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
     final progress = ((completedLessons / lessons.length) * 100).round();
     
     return progress;
+  }
+
+  IconData _getLessonIcon(String? type) {
+    switch (type) {
+      case 'video':
+        return Icons.play_circle_outline;
+      case 'text':
+        return Icons.article;
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      case 'quiz':
+        return Icons.quiz;
+      default:
+        return Icons.play_circle_outline;
+    }
+  }
+
+  Color _getLessonColor(String? type) {
+    switch (type) {
+      case 'video':
+        return Colors.blue[100]!;
+      case 'text':
+        return Colors.green[100]!;
+      case 'pdf':
+        return const Color(0xFFFBBC04).withOpacity(0.2);
+      case 'quiz':
+        return Colors.orange[100]!;
+      default:
+        return Colors.blue[100]!;
+    }
+  }
+
+  String _getLessonLabel(String? type) {
+    switch (type) {
+      case 'video':
+        return 'Video';
+      case 'text':
+        return 'Metin';
+      case 'pdf':
+        return 'PDF';
+      case 'quiz':
+        return 'Quiz';
+      default:
+        return 'Video';
+    }
+  }
+
+  Color _getLessonTextColor(String? type) {
+    switch (type) {
+      case 'video':
+        return Colors.blue[700]!;
+      case 'text':
+        return Colors.green[700]!;
+      case 'pdf':
+        return const Color(0xFFFBBC04);
+      case 'quiz':
+        return Colors.orange[700]!;
+      default:
+        return Colors.blue[700]!;
+    }
   }
 
   @override
@@ -586,15 +652,31 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
               const SnackBar(content: Text('Bu ders henüz açılmamış!')),
             );
           } else {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => LearningPage(
-                  content: lesson,
-                  course: widget.course,
+            // PDF içerikleri için doğrudan PDF viewer'a yönlendir
+            if (lesson['type'] == 'pdf' && lesson['contentUrl'] != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PdfViewerPage(
+                    pdfUrl: lesson['contentUrl'],
+                    title: lesson['title'] ?? 'PDF Dökümanı',
+                    content: lesson,
+                    course: widget.course,
+                  ),
                 ),
-              ),
-            );
+              );
+            } else {
+              // Diğer içerikler için normal LearningPage'e yönlendir
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => LearningPage(
+                    content: lesson,
+                    course: widget.course,
+                  ),
+                ),
+              );
+            }
           }
         },
         child: Container(
@@ -672,7 +754,7 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
                         Row(
                           children: [
                             Icon(
-                              isQuiz ? Icons.quiz : Icons.play_circle_outline,
+                              _getLessonIcon(lesson['type']),
                               size: 16,
                               color: isLocked ? Colors.grey[400] : Colors.grey[600],
                             ),
@@ -688,14 +770,14 @@ class _CourseDetailPageState extends State<CourseDetailPage> with TickerProvider
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
-                                color: isQuiz ? Colors.orange[100] : Colors.blue[100],
+                                color: _getLessonColor(lesson['type']),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
-                                isQuiz ? 'Quiz' : 'Video',
+                                _getLessonLabel(lesson['type']),
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: isQuiz ? Colors.orange[700] : Colors.blue[700],
+                                  color: _getLessonTextColor(lesson['type']),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),

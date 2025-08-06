@@ -7,4 +7,5 @@ public class StudentProgressResponse
     public Guid CourseContentId { get; set; }
     public DateTime ViewedAt { get; set; }
     public int Progress { get; set; }
+    public int TimeSpent { get; set; }
 } 

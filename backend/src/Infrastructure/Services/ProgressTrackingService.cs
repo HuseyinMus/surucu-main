@@ -26,8 +26,7 @@ public class ProgressTrackingService : IProgressTrackingService
             throw new ArgumentException("Kurs bulunamadı");
 
         var progressRecords = await _context.StudentProgresses
-            .Where(sp => sp.StudentId == studentId && 
-                        course.CourseContents.Any(cc => cc.Id == sp.CourseContentId))
+            .Where(sp => sp.StudentId == studentId && sp.CourseId == courseId)
             .ToListAsync();
 
         var totalLessons = course.CourseContents.Count;
@@ -72,15 +71,14 @@ public class ProgressTrackingService : IProgressTrackingService
             .ToListAsync();
 
         var progressRecords = await _context.StudentProgresses
-            .Where(sp => sp.StudentId == studentId && 
-                        courseContents.Any(cc => cc.Id == sp.CourseContentId))
+            .Where(sp => sp.StudentId == studentId && sp.CourseId == courseId)
             .ToListAsync();
 
         var lessonProgress = new List<LessonProgressDto>();
 
         foreach (var content in courseContents)
         {
-            var progress = progressRecords.FirstOrDefault(sp => sp.CourseContentId == content.Id);
+            var progress = progressRecords.FirstOrDefault(sp => sp.ContentId == content.Id);
             
             lessonProgress.Add(new LessonProgressDto
             {
@@ -101,30 +99,27 @@ public class ProgressTrackingService : IProgressTrackingService
 
     public async Task<List<DailyProgressDto>> GetDailyProgressAsync(Guid studentId, Guid courseId, int days = 30)
     {
-        var endDate = DateTime.UtcNow.Date;
-        var startDate = endDate.AddDays(-days + 1);
+        var endDate = DateTime.UtcNow;
+        var startDate = endDate.AddDays(-days);
 
-        var analytics = await _context.StudentAnalytics
-            .Where(sa => sa.StudentId == studentId && 
-                        sa.CourseId == courseId &&
-                        sa.Date >= startDate && sa.Date <= endDate)
-            .OrderBy(sa => sa.Date)
+        var progressRecords = await _context.StudentProgresses
+            .Where(sp => sp.StudentId == studentId && 
+                        sp.CourseId == courseId &&
+                        sp.LastAccessed >= startDate)
             .ToListAsync();
 
         var dailyProgress = new List<DailyProgressDto>();
 
-        for (var date = startDate; date <= endDate; date = date.AddDays(1))
+        for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
         {
-            var dayAnalytics = analytics.FirstOrDefault(a => a.Date.Date == date);
+            var dayRecords = progressRecords.Where(sp => sp.LastAccessed.Date == date).ToList();
             
             dailyProgress.Add(new DailyProgressDto
             {
                 Date = date,
-                TimeSpent = dayAnalytics?.TotalTimeSpent ?? 0,
-                LessonsCompleted = dayAnalytics?.LessonsCompleted ?? 0,
-                QuizzesTaken = dayAnalytics?.QuizzesTaken ?? 0,
-                AverageScore = dayAnalytics?.AverageQuizScore ?? 0,
-                FocusScore = dayAnalytics?.FocusScore ?? 0
+                LessonsCompleted = dayRecords.Count(sp => sp.IsCompleted),
+                TimeSpent = dayRecords.Sum(sp => sp.TimeSpent),
+                Progress = dayRecords.Any() ? dayRecords.Average(sp => sp.Progress) : 0
             });
         }
 
@@ -133,64 +128,68 @@ public class ProgressTrackingService : IProgressTrackingService
 
     public async Task<AnalyticsDto> GetStudentAnalyticsAsync(Guid studentId, DateTime date)
     {
-        var analytics = await _context.StudentAnalytics
-            .Include(sa => sa.Student)
-            .FirstOrDefaultAsync(sa => sa.StudentId == studentId && sa.Date.Date == date.Date);
+        var startOfDay = date.Date;
+        var endOfDay = startOfDay.AddDays(1);
 
-        if (analytics == null)
-            return new AnalyticsDto
-            {
-                StudentId = studentId,
-                Date = date,
-                StudentName = "Bilinmeyen Öğrenci"
-            };
+        var progressRecords = await _context.StudentProgresses
+            .Where(sp => sp.StudentId == studentId && 
+                        sp.LastAccessed >= startOfDay && 
+                        sp.LastAccessed < endOfDay)
+            .ToListAsync();
 
         return new AnalyticsDto
         {
-            StudentId = analytics.StudentId,
-            StudentName = analytics.Student.User.FullName,
-            Date = analytics.Date,
-            TotalTimeSpent = analytics.TotalTimeSpent,
-            LessonsCompleted = analytics.LessonsCompleted,
-            QuizzesTaken = analytics.QuizzesTaken,
-            AverageQuizScore = analytics.AverageQuizScore,
-            PreferredTimeSlot = analytics.PreferredTimeSlot,
-            LearningStyle = analytics.LearningStyle,
-            FocusScore = analytics.FocusScore
+            StudentId = studentId,
+            Date = date,
+            TotalTimeSpent = progressRecords.Sum(sp => sp.TimeSpent),
+            LessonsCompleted = progressRecords.Count(sp => sp.IsCompleted),
+            AverageProgress = progressRecords.Any() ? progressRecords.Average(sp => sp.Progress) : 0,
+            TotalAttempts = progressRecords.Sum(sp => sp.Attempts ?? 0)
         };
     }
 
     public async Task UpdateProgressAsync(Guid studentId, Guid courseContentId, int progress, int timeSpent)
     {
-        var existingProgress = await _context.StudentProgresses
-            .FirstOrDefaultAsync(sp => sp.StudentId == studentId && sp.CourseContentId == courseContentId);
+        var courseContent = await _context.CourseContents
+            .FirstOrDefaultAsync(cc => cc.Id == courseContentId);
 
-        if (existingProgress != null)
+        if (courseContent == null)
+            throw new ArgumentException("Kurs içeriği bulunamadı");
+
+        var existingProgress = await _context.StudentProgresses
+            .FirstOrDefaultAsync(sp => sp.StudentId == studentId && 
+                                      sp.CourseId == courseContent.CourseId &&
+                                      sp.ContentId == courseContentId);
+
+        if (existingProgress == null)
+        {
+            existingProgress = new StudentProgress
+            {
+                Id = Guid.NewGuid(),
+                StudentId = studentId,
+                CourseId = courseContent.CourseId,
+                ContentId = courseContentId,
+                Progress = progress,
+                TimeSpent = timeSpent,
+                IsCompleted = progress >= 100,
+                LastAccessed = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                ViewedAt = DateTime.UtcNow
+            };
+
+            _context.StudentProgresses.Add(existingProgress);
+        }
+        else
         {
             existingProgress.Progress = progress;
             existingProgress.TimeSpent += timeSpent;
             existingProgress.LastAccessed = DateTime.UtcNow;
+            existingProgress.IsCompleted = progress >= 100;
             
-            if (progress >= 100 && !existingProgress.IsCompleted)
+            if (progress >= 100 && !existingProgress.CompletedAt.HasValue)
             {
-                existingProgress.IsCompleted = true;
                 existingProgress.CompletedAt = DateTime.UtcNow;
             }
-        }
-        else
-        {
-            var newProgress = new StudentProgress
-            {
-                StudentId = studentId,
-                CourseContentId = courseContentId,
-                Progress = progress,
-                TimeSpent = timeSpent,
-                IsCompleted = progress >= 100,
-                CompletedAt = progress >= 100 ? DateTime.UtcNow : null,
-                LastAccessed = DateTime.UtcNow
-            };
-            
-            _context.StudentProgresses.Add(newProgress);
         }
 
         await _context.SaveChangesAsync();
@@ -198,28 +197,42 @@ public class ProgressTrackingService : IProgressTrackingService
 
     public async Task CompleteLessonAsync(Guid studentId, Guid courseContentId)
     {
-        var progress = await _context.StudentProgresses
-            .FirstOrDefaultAsync(sp => sp.StudentId == studentId && sp.CourseContentId == courseContentId);
+        var courseContent = await _context.CourseContents
+            .FirstOrDefaultAsync(cc => cc.Id == courseContentId);
 
-        if (progress != null)
+        if (courseContent == null)
+            throw new ArgumentException("Kurs içeriği bulunamadı");
+
+        var existingProgress = await _context.StudentProgresses
+            .FirstOrDefaultAsync(sp => sp.StudentId == studentId && 
+                                      sp.CourseId == courseContent.CourseId &&
+                                      sp.ContentId == courseContentId);
+
+        if (existingProgress == null)
         {
-            progress.IsCompleted = true;
-            progress.CompletedAt = DateTime.UtcNow;
-            progress.Progress = 100;
+            existingProgress = new StudentProgress
+            {
+                Id = Guid.NewGuid(),
+                StudentId = studentId,
+                CourseId = courseContent.CourseId,
+                ContentId = courseContentId,
+                Progress = 100,
+                TimeSpent = 0,
+                IsCompleted = true,
+                CompletedAt = DateTime.UtcNow,
+                LastAccessed = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                ViewedAt = DateTime.UtcNow
+            };
+
+            _context.StudentProgresses.Add(existingProgress);
         }
         else
         {
-            var newProgress = new StudentProgress
-            {
-                StudentId = studentId,
-                CourseContentId = courseContentId,
-                Progress = 100,
-                IsCompleted = true,
-                CompletedAt = DateTime.UtcNow,
-                LastAccessed = DateTime.UtcNow
-            };
-            
-            _context.StudentProgresses.Add(newProgress);
+            existingProgress.Progress = 100;
+            existingProgress.IsCompleted = true;
+            existingProgress.CompletedAt = DateTime.UtcNow;
+            existingProgress.LastAccessed = DateTime.UtcNow;
         }
 
         await _context.SaveChangesAsync();
@@ -228,42 +241,46 @@ public class ProgressTrackingService : IProgressTrackingService
     public async Task UpdateQuizResultAsync(Guid studentId, Guid quizId, int score)
     {
         var quiz = await _context.Quizzes
-            .Include(q => q.Questions)
             .FirstOrDefaultAsync(q => q.Id == quizId);
 
-        if (quiz == null) return;
+        if (quiz == null)
+            throw new ArgumentException("Quiz bulunamadı");
 
-        // Quiz'in bağlı olduğu course'u bul
-        var course = await _context.Courses
-            .Include(c => c.CourseContents)
-            .FirstOrDefaultAsync(c => c.Id == quiz.CourseId);
+        if (!quiz.CourseId.HasValue || quiz.CourseId.Value == Guid.Empty)
+            throw new ArgumentException("Quiz'in bağlı olduğu kurs bulunamadı");
 
-        if (course == null) return;
+        var existingProgress = await _context.StudentProgresses
+            .FirstOrDefaultAsync(sp => sp.StudentId == studentId && 
+                                      sp.CourseId == quiz.CourseId.Value &&
+                                      sp.ContentId == quizId);
 
-        // Quiz sonucunu kaydet
-        var quizResult = new QuizResult
+        if (existingProgress == null)
         {
-            StudentId = studentId,
-            QuizId = quizId,
-            Score = score,
-            CompletedAt = DateTime.UtcNow
-        };
-
-        _context.QuizResults.Add(quizResult);
-
-        // İlgili course content'in progress'ini güncelle
-        var courseContent = course.CourseContents.FirstOrDefault();
-        if (courseContent != null)
-        {
-            var progress = await _context.StudentProgresses
-                .FirstOrDefaultAsync(sp => sp.StudentId == studentId && sp.CourseContentId == courseContent.Id);
-
-            if (progress != null)
+            existingProgress = new StudentProgress
             {
-                progress.QuizScore = score;
-                progress.Attempts++;
-                progress.LastAccessed = DateTime.UtcNow;
-            }
+                Id = Guid.NewGuid(),
+                StudentId = studentId,
+                CourseId = quiz.CourseId.Value,
+                ContentId = quizId,
+                Progress = 100,
+                TimeSpent = 0,
+                IsCompleted = true,
+                QuizScore = score,
+                CompletedAt = DateTime.UtcNow,
+                LastAccessed = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                ViewedAt = DateTime.UtcNow
+            };
+
+            _context.StudentProgresses.Add(existingProgress);
+        }
+        else
+        {
+            existingProgress.QuizScore = score;
+            existingProgress.Progress = 100;
+            existingProgress.IsCompleted = true;
+            existingProgress.CompletedAt = DateTime.UtcNow;
+            existingProgress.LastAccessed = DateTime.UtcNow;
         }
 
         await _context.SaveChangesAsync();
@@ -271,25 +288,34 @@ public class ProgressTrackingService : IProgressTrackingService
 
     public async Task<List<AnalyticsDto>> GetClassAnalyticsAsync(Guid courseId, DateTime date)
     {
-        var analytics = await _context.StudentAnalytics
-            .Include(sa => sa.Student)
-            .ThenInclude(s => s.User)
-            .Where(sa => sa.CourseId == courseId && sa.Date.Date == date.Date)
+        var startOfDay = date.Date;
+        var endOfDay = startOfDay.AddDays(1);
+
+        var progressRecords = await _context.StudentProgresses
+            .Where(sp => sp.CourseId == courseId && 
+                        sp.LastAccessed >= startOfDay && 
+                        sp.LastAccessed < endOfDay)
             .ToListAsync();
 
-        return analytics.Select(a => new AnalyticsDto
+        var studentIds = progressRecords.Select(sp => sp.StudentId).Distinct();
+        var analytics = new List<AnalyticsDto>();
+
+        foreach (var studentId in studentIds)
         {
-            StudentId = a.StudentId,
-            StudentName = a.Student.User.FullName,
-            Date = a.Date,
-            TotalTimeSpent = a.TotalTimeSpent,
-            LessonsCompleted = a.LessonsCompleted,
-            QuizzesTaken = a.QuizzesTaken,
-            AverageQuizScore = a.AverageQuizScore,
-            PreferredTimeSlot = a.PreferredTimeSlot,
-            LearningStyle = a.LearningStyle,
-            FocusScore = a.FocusScore
-        }).ToList();
+            var studentRecords = progressRecords.Where(sp => sp.StudentId == studentId).ToList();
+            
+            analytics.Add(new AnalyticsDto
+            {
+                StudentId = studentId,
+                Date = date,
+                TotalTimeSpent = studentRecords.Sum(sp => sp.TimeSpent),
+                LessonsCompleted = studentRecords.Count(sp => sp.IsCompleted),
+                AverageProgress = studentRecords.Any() ? studentRecords.Average(sp => sp.Progress) : 0,
+                TotalAttempts = studentRecords.Sum(sp => sp.Attempts ?? 0)
+            });
+        }
+
+        return analytics;
     }
 
     public async Task<double> CalculateOverallProgressAsync(Guid studentId, Guid courseId)
@@ -298,17 +324,18 @@ public class ProgressTrackingService : IProgressTrackingService
             .Include(c => c.CourseContents)
             .FirstOrDefaultAsync(c => c.Id == courseId);
 
-        if (course == null || !course.CourseContents.Any())
+        if (course == null)
             return 0;
 
-        var progressRecords = await _context.StudentProgresses
-            .Where(sp => sp.StudentId == studentId && 
-                        course.CourseContents.Any(cc => cc.Id == sp.CourseContentId))
-            .ToListAsync();
+        var totalContents = course.CourseContents.Count;
+        if (totalContents == 0)
+            return 0;
 
-        var totalLessons = course.CourseContents.Count;
-        var completedLessons = progressRecords.Count(sp => sp.IsCompleted);
+        var completedContents = await _context.StudentProgresses
+            .CountAsync(sp => sp.StudentId == studentId && 
+                             sp.CourseId == courseId && 
+                             sp.IsCompleted);
 
-        return totalLessons > 0 ? (double)completedLessons / totalLessons * 100 : 0;
+        return (double)completedContents / totalContents * 100;
     }
 } 

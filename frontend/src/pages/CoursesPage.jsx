@@ -42,6 +42,10 @@ export default function CoursesPage() {
   const [typeFilter, setTypeFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [tagFilter] = useState("");
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [editForm, setEditForm] = useState(initialForm);
 
   const navigate = useNavigate();
 
@@ -72,6 +76,95 @@ export default function CoursesPage() {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleEditChange = (e) => {
+    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+  };
+
+  const handleEditCourse = (course) => {
+    setSelectedCourse(course);
+    setEditForm({
+      title: course.title || "",
+      description: course.description || "",
+      courseType: course.courseType === 0 ? "Theory" : "Practical",
+      tags: course.tags ? course.tags.join(", ") : ""
+    });
+    setShowEditModal(true);
+  };
+
+  const handleDeleteCourse = (course) => {
+    setSelectedCourse(course);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteCourse = async () => {
+    try {
+      const response = await fetch(buildApiUrl(`/api/courses/${selectedCourse.id}`), {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        setCourses(courses.filter(c => c.id !== selectedCourse.id));
+        setShowDeleteConfirm(false);
+        setSelectedCourse(null);
+      } else {
+        const errorData = await response.json();
+        alert(`Kurs silinemedi: ${errorData.message || 'Bilinmeyen hata'}`);
+      }
+    } catch (error) {
+      console.error("Hata:", error);
+      alert("Kurs silinirken hata oluştu");
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const courseData = {
+        title: editForm.title,
+        description: editForm.description,
+        courseType: editForm.courseType === "Theory" ? "Theory" : "Practice",
+        category: selectedCourse.category || "",
+        tags: editForm.tags,
+        drivingSchoolId: drivingSchoolId,
+        videoUrl: selectedCourse.videoUrl || "",
+        imageUrl: selectedCourse.imageUrl || "",
+        pdfUrl: selectedCourse.pdfUrl || ""
+      };
+
+      const response = await fetch(buildApiUrl(`/api/courses/${selectedCourse.id}`), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(courseData)
+      });
+
+      if (response.ok) {
+        setShowEditModal(false);
+        setSelectedCourse(null);
+        // Kursları yeniden yükle
+        const res = await fetch(buildApiUrl(API_ENDPOINTS.COURSES), { 
+          headers: { "Authorization": `Bearer ${token}` } 
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCourses(data);
+        }
+             } else {
+         const errorData = await response.json();
+         console.error("Backend hata detayı:", errorData);
+         alert(`Kurs güncellenemedi: ${errorData.message || errorData.title || 'Bilinmeyen hata'}`);
+       }
+    } catch (error) {
+      console.error("Hata:", error);
+      alert("Kurs güncellenirken hata oluştu");
+    }
   };
 
   // Dosya yükleme fonksiyonu
@@ -286,7 +379,7 @@ export default function CoursesPage() {
               <div className="relative h-48 bg-gradient-to-br from-google-blue to-blue-600">
                 {course.imageUrl ? (
                   <img
-                    src={`http://192.168.1.78:5068${course.imageUrl}`}
+                    src={`http://localhost:5068${course.imageUrl}`}
                     alt={course.title}
                     className="w-full h-full object-cover"
                   />
@@ -317,10 +410,16 @@ export default function CoursesPage() {
                   </button>
                   {isAdminOrInstructor && (
                     <>
-                      <button className="p-2 bg-white bg-opacity-90 rounded-lg hover:bg-opacity-100 transition-all duration-200">
+                      <button 
+                        onClick={() => handleEditCourse(course)}
+                        className="p-2 bg-white bg-opacity-90 rounded-lg hover:bg-opacity-100 transition-all duration-200"
+                      >
                         <Edit size={16} className="text-google-gray-700" />
                       </button>
-                      <button className="p-2 bg-white bg-opacity-90 rounded-lg hover:bg-opacity-100 transition-all duration-200">
+                      <button 
+                        onClick={() => handleDeleteCourse(course)}
+                        className="p-2 bg-white bg-opacity-90 rounded-lg hover:bg-opacity-100 transition-all duration-200"
+                      >
                         <Trash2 size={16} className="text-red-600" />
                       </button>
                     </>
@@ -553,6 +652,140 @@ export default function CoursesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Kurs Düzenleme Modal */}
+      {showEditModal && selectedCourse && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-google-gray-200">
+              <h2 className="text-xl font-semibold text-google-gray-900">Kurs Düzenle</h2>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="p-6 space-y-6">
+              <div className="grid grid-cols-1 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                    Kurs Başlığı
+                  </label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={editForm.title}
+                    onChange={handleEditChange}
+                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                    Açıklama
+                  </label>
+                  <textarea
+                    name="description"
+                    value={editForm.description}
+                    onChange={handleEditChange}
+                    rows={4}
+                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                    Kurs Türü
+                  </label>
+                  <select
+                    name="courseType"
+                    value={editForm.courseType}
+                    onChange={handleEditChange}
+                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                  >
+                    <option value="Theory">Teorik</option>
+                    <option value="Practical">Pratik</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                    Etiketler
+                  </label>
+                  <input
+                    type="text"
+                    name="tags"
+                    value={editForm.tags}
+                    onChange={handleEditChange}
+                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                    placeholder="Virgülle ayırarak etiketler girin"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4 pt-6 border-t border-google-gray-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setSelectedCourse(null);
+                  }}
+                  className="flex-1 px-4 py-2 border border-google-gray-300 text-google-gray-700 rounded-lg hover:bg-google-gray-50 transition-colors duration-200"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-google-blue text-white rounded-lg hover:bg-blue-600 transition-colors duration-200"
+                >
+                  Güncelle
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Silme Onay Modal */}
+      {showDeleteConfirm && selectedCourse && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                    <Trash2 size={20} className="text-red-600" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-google-gray-900">Kursu Sil</h3>
+                  <p className="text-sm text-google-gray-600">Bu işlem geri alınamaz</p>
+                </div>
+              </div>
+              
+              <p className="text-google-gray-700 mb-6">
+                <strong>"{selectedCourse.title}"</strong> kursunu silmek istediğinizden emin misiniz? 
+                Bu işlem tüm kurs içeriklerini ve verilerini kalıcı olarak silecektir.
+              </p>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setSelectedCourse(null);
+                  }}
+                  className="flex-1 px-4 py-2 border border-google-gray-300 text-google-gray-700 rounded-lg hover:bg-google-gray-50 transition-colors duration-200"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={confirmDeleteCourse}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200"
+                >
+                  Sil
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -21,6 +21,9 @@ public class User
     public Guid DrivingSchoolId { get; set; }
     public DrivingSchool DrivingSchool { get; set; } = null!;
     // Navigation properties
+    public string? PasswordResetToken { get; set; }
+public DateTime? ResetTokenExpires { get; set; }
+
     public Student? Student { get; set; }
     public Instructor? Instructor { get; set; }
 } 

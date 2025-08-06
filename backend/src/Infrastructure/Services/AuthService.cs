@@ -38,8 +38,7 @@ public class AuthService : IAuthService
             IsActive = true,
             DrivingSchoolId = request.DrivingSchoolId
         };
-        var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<User>();
-        user.PasswordHash = hasher.HashPassword(user, request.Password);
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
         var token = GenerateJwtToken(user);
@@ -57,7 +56,7 @@ public class AuthService : IAuthService
     public async Task<AuthResponse> LoginWithTcAsync(TcLoginRequest request)
     {
         Console.WriteLine($"TC Login attempt for TC: {request.TcNumber}");
-        
+
         // Önce Students tablosundan TC ile ara
         var student = await _db.Students
             .Include(s => s.User)
@@ -66,7 +65,7 @@ public class AuthService : IAuthService
         if (student != null && student.User != null && student.User.IsActive)
         {
             Console.WriteLine($"Student found: ID={student.Id}, User ID={student.User.Id}, Name={student.User.FullName}");
-            
+
             Console.WriteLine("Generating JWT token for student...");
             var token = GenerateJwtToken(student.User);
             Console.WriteLine("JWT token generated successfully");
@@ -88,7 +87,7 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(u => u.TcNumber == request.TcNumber);
 
         Console.WriteLine($"User found: {user != null}");
-        
+
         if (user == null)
         {
             Console.WriteLine("User not found in database");
@@ -135,24 +134,44 @@ public class AuthService : IAuthService
             var student = await _db.Students
                 .Include(s => s.User)
                 .FirstOrDefaultAsync(s => s.TCNumber == request.TCNumber);
-            
+
             if (student == null || !student.User.IsActive)
                 throw new Exception("TC kimlik numarası bulunamadı.");
-                
+
             user = student.User;
         }
         else if (request.IsEmailLogin)
         {
             // Email/Password ile login
             user = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
-            
+
             if (user == null || !user.IsActive)
                 throw new Exception("Invalid credentials.");
-                
-            var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<User>();
-            var result = hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password!);
-            
-            if (result == Microsoft.AspNetCore.Identity.PasswordVerificationResult.Failed)
+
+            // BCrypt doğrulamasını güvenli şekilde yap
+            bool passwordValid = false;
+            try
+            {
+                if (!string.IsNullOrEmpty(user.PasswordHash))
+                {
+                    passwordValid = BCrypt.Net.BCrypt.Verify(request.Password!, user.PasswordHash);
+                }
+            }
+            catch (BCrypt.Net.SaltParseException)
+            {
+                // Hash bozuksa veya geçersizse, şifreyi yeniden hash'le
+                Console.WriteLine($"Invalid hash for user {user.Email}, rehashing password");
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password!);
+                await _db.SaveChangesAsync();
+                passwordValid = true; // Yeni hash oluşturuldu, giriş başarılı
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"BCrypt verification error: {ex.Message}");
+                passwordValid = false;
+            }
+
+            if (!passwordValid)
                 throw new Exception("Invalid credentials.");
         }
         else
@@ -199,4 +218,37 @@ public class AuthService : IAuthService
         );
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+
+    public async Task<string> GeneratePasswordResetTokenAsync(string email)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user == null) throw new Exception("Kullanıcı bulunamadı");
+
+        var token = Guid.NewGuid().ToString(); // Basit bir token
+        user.PasswordResetToken = token;
+        user.ResetTokenExpires = DateTime.UtcNow.AddHours(1); // 1 saat geçerli
+
+        await _db.SaveChangesAsync();
+        return token;
+    }
+
+    public async Task<bool> ResetPasswordAsync(ResetPasswordRequest request)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+        if (user == null) throw new Exception("Kullanıcı bulunamadı");
+
+        if (user.PasswordResetToken != request.Token || user.ResetTokenExpires < DateTime.UtcNow)
+        {
+            throw new Exception("Geçersiz veya süresi dolmuş token");
+        }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+
+        user.PasswordResetToken = null;
+        user.ResetTokenExpires = null;
+
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
 } 

@@ -16,7 +16,7 @@ public class Instructor : ITenantEntity
     public string? Specialization { get; set; }
     public int Experience { get; set; } = 0;
     public double Rating { get; set; } = 0.0;
-    public DateTime HireDate { get; set; } = DateTime.Now;
+    public DateTime HireDate { get; set; } = DateTime.UtcNow;
     public bool IsActive { get; set; } = true;
     // Navigation properties
     public User User { get; set; } = null!;

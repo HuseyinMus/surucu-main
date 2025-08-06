@@ -76,10 +76,12 @@ export default function StudentsPage() {
           email: student.email || '',
           telefon: student.telefon || '',
           dogumTarihi: student.dogumTarihi || '',
-          kayitTarihi: student.kayitTarihi || student.registrationDate || '',
+          kayitTarihi: student.registrationDate || '',
           cinsiyet: student.cinsiyet || '',
-          ehliyetSinifi: student.licenseType || student.ehliyetSinifi || '',
+          ehliyetSinifi: student.licenseType || '',
           notlar: student.notlar || '',
+          currentStage: student.currentStage || '',
+          isActive: student.isActive || true,
           user: {
             fullName: student.fullName || '',
             email: student.email || ''
@@ -87,8 +89,9 @@ export default function StudentsPage() {
         }));
         
         setStudents(formattedStudents);
-      } catch {
-        setListError("Öğrenci listesi alınamadı.");
+      } catch (error) {
+        console.error("Öğrenci listesi hatası:", error);
+        setListError("Öğrenci listesi alınamadı: " + error.message);
       }
       setListLoading(false);
     }

@@ -18,11 +18,11 @@ public class DocumentsController : ControllerBase
 
     [HttpPost]
     [Authorize(Roles = "Student,Admin,Instructor")]
-    public async Task<IActionResult> Upload([FromForm] DocumentUploadRequest request, [FromForm] IFormFile file)
-    {
-        var result = await _service.UploadDocumentAsync(request, file);
-        return Ok(result);
-    }
+public async Task<IActionResult> Upload([FromForm] DocumentUploadRequest request)
+{
+    var result = await _service.UploadDocumentAsync(request, request.File);
+    return Ok(result);
+}
 
     [HttpGet("/api/students/{studentId}/documents")]
     [Authorize(Roles = "Student,Admin,Instructor")]

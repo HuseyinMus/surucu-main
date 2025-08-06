@@ -21,9 +21,7 @@ public class DailyProgressDto
     public DateTime Date { get; set; }
     public int TimeSpent { get; set; } // Saniye
     public int LessonsCompleted { get; set; }
-    public int QuizzesTaken { get; set; }
-    public double AverageScore { get; set; }
-    public int FocusScore { get; set; }
+    public double Progress { get; set; } // Ortalama progress
 }
 
 public class LessonProgressDto
@@ -42,13 +40,9 @@ public class LessonProgressDto
 public class AnalyticsDto
 {
     public Guid StudentId { get; set; }
-    public string StudentName { get; set; } = "";
     public DateTime Date { get; set; }
     public int TotalTimeSpent { get; set; }
     public int LessonsCompleted { get; set; }
-    public int QuizzesTaken { get; set; }
-    public double AverageQuizScore { get; set; }
-    public string PreferredTimeSlot { get; set; } = "";
-    public string LearningStyle { get; set; } = "";
-    public int FocusScore { get; set; }
+    public double AverageProgress { get; set; }
+    public int TotalAttempts { get; set; }
 } 

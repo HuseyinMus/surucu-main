@@ -13,8 +13,7 @@ import { useAuth } from "./components/AuthContext";
 import CourseDetailPage from "./pages/CourseDetailPage";
 import QuizzesPage from "./pages/QuizzesPage";
 import ProfilePage from "./pages/ProfilePage";
-import ProgressTrackingPage from "./pages/ProgressTrackingPage";
-import TestPage from "./pages/TestPage";
+
 import CRMDashboardPage from "./pages/CRMDashboardPage";
 
 function PrivateRoute({ children }) {
@@ -42,11 +41,10 @@ export default function App() {
         <Route path="students" element={<StudentsPage />} />
         <Route path="courses" element={<CoursesPage />} />
         <Route path="courses/:id" element={<CourseDetailPage />} />
-        <Route path="courses/:courseId/progress" element={<ProgressTrackingPage />} />
+        <Route path="courses/:courseId/progress" element={<div>İlerleme Takibi</div>} />
         <Route path="exams" element={<ExamsPage />} />
         <Route path="instructors" element={<InstructorsPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
-        <Route path="progress" element={<ProgressTrackingPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="sinavlar" element={<QuizzesPage />} />
       </Route>

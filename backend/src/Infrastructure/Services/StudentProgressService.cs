@@ -20,9 +20,13 @@ public class StudentProgressService : IStudentProgressService
         {
             Id = Guid.NewGuid(),
             StudentId = request.StudentId,
-            CourseContentId = request.CourseContentId,
+            CourseId = request.CourseId,
+            ContentId = request.CourseContentId, // Eski alan adını koruyoruz
             Progress = request.Progress,
-            ViewedAt = DateTime.UtcNow
+            TimeSpent = request.TimeSpent,
+            ViewedAt = DateTime.UtcNow,
+            LastAccessed = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
         };
         _db.StudentProgresses.Add(progress);
         await _db.SaveChangesAsync();
@@ -30,9 +34,10 @@ public class StudentProgressService : IStudentProgressService
         {
             Id = progress.Id,
             StudentId = progress.StudentId,
-            CourseContentId = progress.CourseContentId,
+            CourseContentId = progress.ContentId, // Eski alan adını koruyoruz
             ViewedAt = progress.ViewedAt,
-            Progress = progress.Progress
+            Progress = progress.Progress,
+            TimeSpent = progress.TimeSpent
         };
     }
 
@@ -45,9 +50,10 @@ public class StudentProgressService : IStudentProgressService
         {
             Id = progress.Id,
             StudentId = progress.StudentId,
-            CourseContentId = progress.CourseContentId,
+            CourseContentId = progress.ContentId, // Eski alan adını koruyoruz
             ViewedAt = progress.ViewedAt,
-            Progress = progress.Progress
+            Progress = progress.Progress,
+            TimeSpent = progress.TimeSpent
         }).ToList();
     }
 
@@ -60,7 +66,7 @@ public class StudentProgressService : IStudentProgressService
         {
             var totalContents = await _db.CourseContents.CountAsync(cc => cc.CourseId == course.Id);
             var viewedContents = await _db.StudentProgresses
-                .CountAsync(sp => sp.StudentId == studentId && _db.CourseContents.Any(cc => cc.Id == sp.CourseContentId && cc.CourseId == course.Id));
+                .CountAsync(sp => sp.StudentId == studentId && sp.CourseId == course.Id);
             double percent = totalContents == 0 ? 0 : (viewedContents * 100.0) / totalContents;
             reports.Add(new StudentProgressReport
             {

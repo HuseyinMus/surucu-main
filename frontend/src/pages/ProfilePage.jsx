@@ -2,13 +2,13 @@ import React, { useEffect, useState } from "react";
 import { 
   User, 
   Save, 
-  Upload, 
+  // Upload, // Logo yükleme için kullanılan import geçici olarak devre dışı bırakıldı
   Mail, 
   Phone, 
   MapPin, 
   Building, 
   CreditCard,
-  Camera,
+  // Camera, // Logo yükleme için kullanılan import geçici olarak devre dışı bırakıldı
   CheckCircle,
   AlertCircle
 } from "lucide-react";
@@ -16,8 +16,9 @@ import {
 export default function ProfilePage() {
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState({ name: "", address: "", phone: "", email: "", taxNumber: "", logoUrl: "" });
-  const [logoFile, setLogoFile] = useState(null);
-  const [logoPreview, setLogoPreview] = useState(null);
+  // Logo ile ilgili state'ler geçici olarak devre dışı bırakıldı
+  // const [logoFile, setLogoFile] = useState(null);
+  // const [logoPreview, setLogoPreview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -29,11 +30,43 @@ export default function ProfilePage() {
       setError("");
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch("http://192.168.1.78:5068/api/drivingschools/me", {
-          headers: { Authorization: `Bearer ${token}` },
+        if (!token) {
+          setError("Token bulunamadı. Lütfen tekrar giriş yapın.");
+          setLoading(false);
+          return;
+        }
+        
+        console.log("Token:", token); // Debug için
+        
+        // Önce token'ı decode edelim
+        try {
+          const tokenParts = token.split('.');
+          if (tokenParts.length === 3) {
+            const payload = JSON.parse(atob(tokenParts[1]));
+            console.log("Token payload:", payload);
+          }
+        } catch (e) {
+          console.log("Token decode error:", e);
+        }
+        
+        const res = await fetch("http://localhost:5068/api/drivingschools/me", {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
         });
-        if (!res.ok) throw new Error("Profil alınamadı");
+        
+        console.log("Response status:", res.status); // Debug için
+        
+        if (!res.ok) {
+          const errorData = await res.text();
+          console.log("Error response:", errorData); // Debug için
+          throw new Error(`HTTP ${res.status}: ${errorData}`);
+        }
+        
         const data = await res.json();
+        console.log("Profile data:", data); // Debug için
+        
         setProfile(data);
         setForm({
           name: data.name || "",
@@ -43,9 +76,10 @@ export default function ProfilePage() {
           taxNumber: data.taxNumber || "",
           logoUrl: data.logoUrl || "",
         });
-        setLogoPreview(data.logoUrl || null);
+        // setLogoPreview(data.logoUrl || null); // Logo preview geçici olarak devre dışı bırakıldı
       } catch (err) {
-        setError("Profil alınamadı.");
+        console.error("Profile fetch error:", err); // Debug için
+        setError(`Profil alınamadı: ${err.message}`);
       }
       setLoading(false);
     }
@@ -56,6 +90,8 @@ export default function ProfilePage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // Logo yükleme işlemi geçici olarak devre dışı bırakıldı
+  /*
   const handleLogoChange = (e) => {
     const file = e.target.files[0];
     setLogoFile(file);
@@ -71,7 +107,7 @@ export default function ProfilePage() {
       const token = localStorage.getItem("token");
       const formData = new FormData();
       formData.append("logo", logoFile);
-      const res = await fetch("http://192.168.1.78:5068/api/drivingschools/upload-logo", {
+      const res = await fetch("http://localhost:5068/api/drivingschools/upload-logo", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -90,6 +126,7 @@ export default function ProfilePage() {
     }
     setSaving(false);
   };
+  */
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -99,7 +136,7 @@ export default function ProfilePage() {
     setError("");
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://192.168.1.78:5068/api/drivingschools/me", {
+      const res = await fetch("http://localhost:5068/api/drivingschools/me", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -168,6 +205,7 @@ export default function ProfilePage() {
               {/* Logo Section */}
               <div className="relative">
                 <div className="w-24 h-24 bg-white rounded-xl shadow-lg flex items-center justify-center overflow-hidden">
+                  {/* Logo preview geçici olarak devre dışı bırakıldı
                   {logoPreview ? (
                     <img 
                       src={logoPreview} 
@@ -177,9 +215,11 @@ export default function ProfilePage() {
                   ) : (
                     <Building className="w-12 h-12 text-google-gray-400" />
                   )}
+                  */}
+                  <Building className="w-12 h-12 text-google-gray-400" />
                 </div>
                 
-                {/* Upload Button */}
+                {/* Upload Button - Geçici olarak devre dışı bırakıldı
                 <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center cursor-pointer hover:bg-google-gray-50 transition-colors duration-200">
                   <Camera size={16} className="text-google-gray-600" />
                   <input
@@ -189,6 +229,7 @@ export default function ProfilePage() {
                     className="hidden"
                   />
                 </label>
+                */}
               </div>
 
               {/* Profile Info */}
@@ -201,7 +242,7 @@ export default function ProfilePage() {
                 </p>
               </div>
 
-              {/* Upload Logo Button */}
+              {/* Upload Logo Button - Geçici olarak devre dışı bırakıldı
               {logoFile && (
                 <button
                   onClick={handleLogoUpload}
@@ -212,6 +253,7 @@ export default function ProfilePage() {
                   {saving ? "Yükleniyor..." : "Logo Yükle"}
                 </button>
               )}
+              */}
             </div>
           </div>
 

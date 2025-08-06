@@ -33,13 +33,28 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]!))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]!)),
+        ClockSkew = TimeSpan.Zero // Token süresini tam olarak kontrol et
+    };
+    
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine($"JWT Authentication failed: {context.Exception.Message}");
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
+        {
+            Console.WriteLine("JWT Token validated successfully");
+            return Task.CompletedTask;
+        }
     };
 });
 
 builder.Services.AddAuthorization();
-// Add Identity (custom implementation, not ASP.NET Identity)
-// You can add password hashing and user management services here
+
+// Scoped services...
 builder.Services.AddScoped<Application.Interfaces.IAuthService, Infrastructure.Services.AuthService>();
 builder.Services.AddScoped<Application.Interfaces.IStudentService, Infrastructure.Services.StudentService>();
 builder.Services.AddScoped<Application.Interfaces.ICourseService, Infrastructure.Services.CourseService>();
@@ -52,11 +67,12 @@ builder.Services.AddScoped<Application.Interfaces.IProgressTrackingService, Infr
 builder.Services.AddSingleton<Application.Interfaces.ISmsSender, Infrastructure.Services.SmsSender>();
 builder.Services.AddSingleton<Microsoft.AspNetCore.Identity.IPasswordHasher<Domain.Entities.User>, Microsoft.AspNetCore.Identity.PasswordHasher<Domain.Entities.User>>();
 
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://192.168.1.78:5068")
+        policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "http://localhost:8080")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials()
@@ -66,7 +82,42 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+builder.Services.AddSwaggerGen(c =>
+{
+    c.CustomSchemaIds(type => type.FullName!.Replace("+", "."));
+
+    // Swagger JWT Bearer Authentication configuration
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Description = @"JWT Authorization header using the Bearer scheme. 
+Enter 'Bearer' [space] and then your token in the text input below.
+Example: 'Bearer abcdef12345'",
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement()
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                },
+                Scheme = "oauth2",
+                Name = "Bearer",
+                In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+
+            },
+            new List<string>()
+        }
+    });
+});
 
 var app = builder.Build();
 
@@ -78,7 +129,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-// Statik dosya sunumu (uploads klasörü için)
+
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(
@@ -86,34 +137,48 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/uploads",
     OnPrepareResponse = context =>
     {
-        // Video dosyaları için özel headers (sadece eksik olanları ekle)
         var file = context.File;
         var fileName = file.Name.ToLowerInvariant();
-        
+
+        // Video dosyaları için
         if (fileName.EndsWith(".mp4") || fileName.EndsWith(".avi") || fileName.EndsWith(".mov"))
         {
-            // Video dosyaları için range support
             if (!context.Context.Response.Headers.ContainsKey("Accept-Ranges"))
                 context.Context.Response.Headers.Add("Accept-Ranges", "bytes");
-            
+
             if (!context.Context.Response.Headers.ContainsKey("Cache-Control"))
                 context.Context.Response.Headers.Add("Cache-Control", "public, max-age=31536000");
         }
-        
-        // CORS headers for media files (sadece eksik olanları ekle)
+
+        // PDF dosyaları için
+        if (fileName.EndsWith(".pdf"))
+        {
+            if (!context.Context.Response.Headers.ContainsKey("Content-Type"))
+                context.Context.Response.Headers.Add("Content-Type", "application/pdf");
+
+            if (!context.Context.Response.Headers.ContainsKey("Cache-Control"))
+                context.Context.Response.Headers.Add("Cache-Control", "public, max-age=31536000");
+
+            if (!context.Context.Response.Headers.ContainsKey("Content-Disposition"))
+                context.Context.Response.Headers.Add("Content-Disposition", "inline");
+        }
+
+        // CORS headers
         if (!context.Context.Response.Headers.ContainsKey("Access-Control-Allow-Origin"))
             context.Context.Response.Headers.Add("Access-Control-Allow-Origin", "*");
-        
+
         if (!context.Context.Response.Headers.ContainsKey("Access-Control-Allow-Methods"))
             context.Context.Response.Headers.Add("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-        
+
         if (!context.Context.Response.Headers.ContainsKey("Access-Control-Allow-Headers"))
             context.Context.Response.Headers.Add("Access-Control-Allow-Headers", "Range");
     }
 });
+
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
 // Test verisi oluştur (sadece development ortamında)
@@ -126,15 +191,12 @@ if (app.Environment.IsDevelopment())
 
 app.Run();
 
-// Test verisi oluşturma metodu
 async Task SeedTestDataAsync(AppDbContext db)
 {
     try
     {
-        // Database oluştur (eğer yoksa)
         await db.Database.EnsureCreatedAsync();
 
-        // Test driving school oluştur
         if (!await db.DrivingSchools.AnyAsync())
         {
             var drivingSchool = new Domain.Entities.DrivingSchool
@@ -149,7 +211,6 @@ async Task SeedTestDataAsync(AppDbContext db)
             db.DrivingSchools.Add(drivingSchool);
             await db.SaveChangesAsync();
 
-            // Test user oluştur
             var user = new Domain.Entities.User
             {
                 Id = Guid.NewGuid(),
@@ -160,20 +221,19 @@ async Task SeedTestDataAsync(AppDbContext db)
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
-            
+
             var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<Domain.Entities.User>();
             user.PasswordHash = hasher.HashPassword(user, "password123");
-            
+
             db.Users.Add(user);
             await db.SaveChangesAsync();
 
-            // Test student oluştur
             var student = new Domain.Entities.Student
             {
                 Id = Guid.NewGuid(),
                 UserId = user.Id,
                 DrivingSchoolId = drivingSchool.Id,
-                TCNumber = "12345678901", // Test TC numarası
+                TCNumber = "12345678901",
                 BirthDate = DateTime.UtcNow.AddYears(-25),
                 LicenseType = "B",
                 RegistrationDate = DateTime.UtcNow,
@@ -181,10 +241,10 @@ async Task SeedTestDataAsync(AppDbContext db)
                 PhoneNumber = "555-987-6543",
                 Gender = "Erkek"
             };
-            
+
             db.Students.Add(student);
             await db.SaveChangesAsync();
-            
+
             Console.WriteLine("Test verisi başarıyla oluşturuldu!");
             Console.WriteLine("Test TC: 12345678901");
         }

@@ -57,7 +57,7 @@ public class InstructorsController : ControllerBase
                     specialization = "Trafik Kuralları",
                     experience = 5,
                     rating = 4.5,
-                    hireDate = DateTime.Now.AddYears(-2),
+                    hireDate = DateTime.UtcNow.AddYears(-2),
                     isActive = true
                 },
                 new
@@ -72,7 +72,7 @@ public class InstructorsController : ControllerBase
                     specialization = "Direksiyon Eğitimi",
                     experience = 8,
                     rating = 4.8,
-                    hireDate = DateTime.Now.AddYears(-3),
+                    hireDate = DateTime.UtcNow.AddYears(-3),
                     isActive = true
                 },
                 new
@@ -87,7 +87,7 @@ public class InstructorsController : ControllerBase
                     specialization = "Motor ve Araç Tekniği",
                     experience = 3,
                     rating = 4.2,
-                    hireDate = DateTime.Now.AddYears(-1),
+                    hireDate = DateTime.UtcNow.AddYears(-1),
                     isActive = true
                 }
             };

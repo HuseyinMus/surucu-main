@@ -155,8 +155,23 @@ export default function QuizzesPage() {
   async function openQuestionsModal(quiz) {
     setCurrentQuiz(quiz);
     setShowQuestionsModal(true);
-    // Soruları çek (örnek, backend'de endpoint yoksa dummy bırak)
-    setQuestions(quiz.questions || []);
+    
+    // Pending questions'ı temizle
+    setPendingQuestions([{ questionText: '', questionType: 'MultipleChoice', mediaFile: null, mediaUrl: '', options: [ { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' } ] }]);
+    
+    // Soruları API'den çek
+    try {
+      const res = await fetch(`http://192.168.1.78:5068/api/quizzes/${quiz.id}/questions`);
+      if (res.ok) {
+        const questionsData = await res.json();
+        setQuestions(questionsData);
+      } else {
+        setQuestions([]);
+      }
+    } catch (error) {
+      console.error('Sorular yüklenirken hata:', error);
+      setQuestions([]);
+    }
   }
 
   function handleOptionChange(i, field, value) {
@@ -191,7 +206,12 @@ export default function QuizzesPage() {
       setUploading(true);
       const formData = new FormData();
       formData.append('image', questionForm.mediaFile); // veya video
-      const res = await fetch('http://192.168.1.78:5068/api/courses/upload-media', { method: 'POST', body: formData });
+      const token = localStorage.getItem("token");
+      const res = await fetch('http://192.168.1.78:5068/api/courses/upload-media', { 
+        method: 'POST', 
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData 
+      });
       const data = await res.json();
       mediaUrl = data.imageUrl || data.videoUrl || '';
       setUploading(false);
@@ -203,7 +223,12 @@ export default function QuizzesPage() {
         setUploading(true);
         const formData = new FormData();
         formData.append('image', opt.mediaFile); // veya video
-        const res = await fetch('http://192.168.1.78:5068/api/courses/upload-media', { method: 'POST', body: formData });
+        const token = localStorage.getItem("token");
+        const res = await fetch('http://192.168.1.78:5068/api/courses/upload-media', { 
+          method: 'POST', 
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData 
+        });
         const data = await res.json();
         optMediaUrl = data.imageUrl || data.videoUrl || '';
         setUploading(false);
@@ -212,9 +237,18 @@ export default function QuizzesPage() {
     }));
     // Soru ekle
     try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setQuestionFormError('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
+        return;
+      }
+
       const res = await fetch(`http://192.168.1.78:5068/api/quizzes/${currentQuiz.id}/questions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           questionText: questionForm.questionText,
           questionType: questionForm.questionType,
@@ -222,10 +256,17 @@ export default function QuizzesPage() {
           options: optionsWithMedia
         })
       });
-      if (res.ok) {
-        setQuestionForm({ questionText: '', questionType: 'MultipleChoice', mediaFile: null, mediaUrl: '', options: [ { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' } ] });
-        setShowQuestionsModal(false);
-      } else {
+             if (res.ok) {
+         const newQuestion = await res.json();
+         // Yeni soruyu listeye ekle
+         setQuestions([...questions, newQuestion]);
+         setQuestionForm({ questionText: '', questionType: 'MultipleChoice', mediaFile: null, mediaUrl: '', options: [ { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' } ] });
+         
+         // Başarı mesajı göster
+         alert('Soru başarıyla eklendi!');
+         
+         // Modal'ı açık tut
+       } else {
         setQuestionFormError('Soru eklenemedi!');
       }
     } catch {
@@ -241,18 +282,144 @@ export default function QuizzesPage() {
       questionType: question.questionType,
       mediaFile: null,
       mediaUrl: question.mediaUrl || '',
-      options: question.options || [ { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' } ]
+      options: question.options?.map(opt => ({
+        text: opt.optionText || opt.text || '',
+        isCorrect: opt.isCorrect || false,
+        mediaFile: null,
+        mediaUrl: opt.mediaUrl || ''
+      })) || [ { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' } ]
     });
     setShowQuestionEditModal(true);
   }
   async function handleQuestionEditSubmit(e) {
     e.preventDefault();
-    alert('Soru düzenleme backend endpointi eklenmeli!');
-    setShowQuestionEditModal(false);
-    setEditingQuestion(null);
+    setQuestionFormError('');
+    if (!questionForm.questionText) { setQuestionFormError('Soru metni zorunlu'); return; }
+    if (questionForm.options.length < 2) { setQuestionFormError('En az 2 şık olmalı'); return; }
+    if (!questionForm.options.some(o => o.isCorrect)) { setQuestionFormError('En az 1 doğru şık seçilmeli'); return; }
+    
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setQuestionFormError('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
+        return;
+      }
+
+      // Medya yükleme (eğer yeni dosya seçildiyse)
+      let mediaUrl = editingQuestion.mediaUrl || '';
+      if (questionForm.mediaFile) {
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('image', questionForm.mediaFile);
+        const mediaRes = await fetch('http://192.168.1.78:5068/api/courses/upload-media', { 
+          method: 'POST', 
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData 
+        });
+        const mediaData = await mediaRes.json();
+        mediaUrl = mediaData.imageUrl || mediaData.videoUrl || '';
+        setUploading(false);
+      }
+
+      // Şıklar için medya yükleme
+      const optionsWithMedia = await Promise.all(questionForm.options.map(async (opt, index) => {
+        let optMediaUrl = opt.mediaUrl || '';
+        if (opt.mediaFile) {
+          setUploading(true);
+          const formData = new FormData();
+          formData.append('image', opt.mediaFile);
+          const res = await fetch('http://192.168.1.78:5068/api/courses/upload-media', { 
+            method: 'POST', 
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData 
+          });
+          const data = await res.json();
+          optMediaUrl = data.imageUrl || data.videoUrl || '';
+          setUploading(false);
+        }
+        return { optionText: opt.text, isCorrect: opt.isCorrect, mediaUrl: optMediaUrl };
+      }));
+
+      const res = await fetch(`http://192.168.1.78:5068/api/quizzes/${currentQuiz.id}/questions/${editingQuestion.id}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          questionText: questionForm.questionText,
+          questionType: questionForm.questionType,
+          mediaUrl,
+          options: optionsWithMedia
+        })
+      });
+
+             if (res.ok) {
+         setShowQuestionEditModal(false);
+         setEditingQuestion(null);
+         setQuestionForm({ questionText: '', questionType: 'MultipleChoice', mediaFile: null, mediaUrl: '', options: [ { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' } ] });
+         
+         // Güncellenmiş soruyu mevcut listede güncelle
+         const updatedQuestions = questions.map(q => 
+           q.id === editingQuestion.id 
+             ? {
+                 ...q,
+                 questionText: questionForm.questionText,
+                 questionType: questionForm.questionType,
+                 mediaUrl: mediaUrl,
+                 options: optionsWithMedia
+               }
+             : q
+         );
+         setQuestions(updatedQuestions);
+         
+         // Başarı mesajı göster
+         alert('Soru başarıyla güncellendi!');
+         
+         // Modal'ı açık tut, sadece düzenleme modalını kapat
+         setShowQuestionEditModal(false);
+       } else {
+        const errorData = await res.json().catch(() => ({}));
+        setQuestionFormError(errorData?.message || 'Soru güncellenirken hata oluştu!');
+      }
+    } catch (error) {
+      console.error('Soru güncelleme hatası:', error);
+      setQuestionFormError('Sunucu hatası!');
+    }
   }
   async function handleQuestionDelete(questionId) {
-    alert('Soru silme backend endpointi eklenmeli!');
+    if (!window.confirm('Bu soruyu silmek istediğinize emin misiniz?')) return;
+    
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
+        return;
+      }
+
+      const res = await fetch(`http://192.168.1.78:5068/api/quizzes/${currentQuiz.id}/questions/${questionId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+                           if (res.ok) {
+          // Soruyu listeden kaldır
+          setQuestions(questions.filter(q => q.id !== questionId));
+          // Pending questions'ı da temizle
+          setPendingQuestions([{ questionText: '', questionType: 'MultipleChoice', mediaFile: null, mediaUrl: '', options: [ { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' } ] }]);
+          
+                     // Başarı mesajı göster
+           alert('Soru başarıyla silindi!');
+           
+           // Modal'ı açık tut
+         } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData?.message || 'Soru silinirken hata oluştu!');
+      }
+    } catch (error) {
+      console.error('Soru silme hatası:', error);
+      alert('Sunucu hatası!');
+    }
   }
 
   // Soru ekleme formu her zaman açık, ekledikçe alta yeni form açılır
@@ -289,7 +456,12 @@ export default function QuizzesPage() {
       setUploading(true);
       const formData = new FormData();
       formData.append('image', q.mediaFile);
-      const res = await fetch('http://192.168.1.78:5068/api/courses/upload-media', { method: 'POST', body: formData });
+      const token = localStorage.getItem("token");
+      const res = await fetch('http://192.168.1.78:5068/api/courses/upload-media', { 
+        method: 'POST', 
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData 
+      });
       const data = await res.json();
       mediaUrl = data.imageUrl || data.videoUrl || '';
       setUploading(false);
@@ -300,7 +472,12 @@ export default function QuizzesPage() {
         setUploading(true);
         const formData = new FormData();
         formData.append('image', opt.mediaFile);
-        const res = await fetch('http://192.168.1.78:5068/api/courses/upload-media', { method: 'POST', body: formData });
+        const token = localStorage.getItem("token");
+        const res = await fetch('http://192.168.1.78:5068/api/courses/upload-media', { 
+          method: 'POST', 
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData 
+        });
         const data = await res.json();
         optMediaUrl = data.imageUrl || data.videoUrl || '';
         setUploading(false);
@@ -309,9 +486,18 @@ export default function QuizzesPage() {
     }));
     // Soru ekle
     try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
+        return;
+      }
+
       const res = await fetch(`http://192.168.1.78:5068/api/quizzes/${currentQuiz.id}/questions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           questionText: q.questionText,
           questionType: q.questionType,
@@ -319,12 +505,18 @@ export default function QuizzesPage() {
           options: optionsWithMedia
         })
       });
-      if (res.ok) {
-        // Sorular listesini güncelle (dummy, backend endpoint yoksa elle ekle)
-        setQuestions([...questions, { ...q, id: Math.random().toString(36).slice(2) }]);
-        // Yeni boş form ekle
-        setPendingQuestions(pendingQuestions.concat([{ questionText: '', questionType: 'MultipleChoice', mediaFile: null, mediaUrl: '', options: [ { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' } ] }]));
-      } else {
+                           if (res.ok) {
+          const newQuestion = await res.json();
+          // Yeni soruyu listeye ekle
+          setQuestions([...questions, newQuestion]);
+          // Pending questions'ı temizle ve yeni boş form ekle
+          setPendingQuestions([{ questionText: '', questionType: 'MultipleChoice', mediaFile: null, mediaUrl: '', options: [ { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' }, { text: '', isCorrect: false, mediaFile: null, mediaUrl: '' } ] }]);
+          
+                     // Başarı mesajı göster
+           alert('Soru başarıyla eklendi!');
+           
+           // Modal'ı açık tut
+         } else {
         alert('Soru eklenemedi!');
       }
     } catch {
@@ -563,8 +755,61 @@ export default function QuizzesPage() {
                   <option value="TrueFalse">Doğru/Yanlış</option>
                 </select>
               </div>
-              {/* Diğer alanlar ve şıklar buraya eklenebilir */}
+              <div>
+                <label className="block mb-1">Soruya Resim/Video Ekle</label>
+                <input type="file" accept="image/*,video/*" onChange={e => setQuestionForm(f => ({ ...f, mediaFile: e.target.files[0], mediaPreview: e.target.files[0] ? URL.createObjectURL(e.target.files[0]) : null }))} className="w-full p-2 rounded border" />
+                {questionForm.mediaPreview && (
+                  <div className="mt-2">
+                    {questionForm.mediaFile && questionForm.mediaFile.type.startsWith('image') ? (
+                      <img src={questionForm.mediaPreview} alt="Önizleme" className="max-h-32 rounded" />
+                    ) : questionForm.mediaFile && questionForm.mediaFile.type.startsWith('video') ? (
+                      <video src={questionForm.mediaPreview} controls className="max-h-32 rounded" />
+                    ) : null}
+                  </div>
+                )}
+                {questionForm.mediaUrl && !questionForm.mediaFile && (
+                  <div className="mt-2">
+                    {questionForm.mediaUrl.includes('image') ? (
+                      <img src={questionForm.mediaUrl} alt="Mevcut Medya" className="max-h-32 rounded" />
+                    ) : (
+                      <video src={questionForm.mediaUrl} controls className="max-h-32 rounded" />
+                    )}
+                  </div>
+                )}
+                {uploading && <div className="text-xs text-blue-600 mt-1">Yükleniyor...</div>}
+              </div>
+              <div>
+                <label className="block mb-1">Şıklar</label>
+                {questionForm.options.map((opt, oi) => (
+                  <div key={oi} className="flex items-center gap-2 mb-2">
+                    <input value={opt.text || ''} onChange={e => handleOptionChange(oi, 'text', e.target.value)} className="p-2 rounded border flex-1" placeholder={`Şık ${oi + 1}`} />
+                    <input type="file" accept="image/*,video/*" onChange={e => handleOptionFileChange(oi, e.target.files[0])} className="w-32 p-1 rounded border" />
+                    {opt.mediaFile && (
+                      <span className="ml-2">
+                        {opt.mediaFile.type.startsWith('image') ? (
+                          <img src={URL.createObjectURL(opt.mediaFile)} alt="Şık Önizleme" className="max-h-12 rounded" />
+                        ) : opt.mediaFile.type.startsWith('video') ? (
+                          <video src={URL.createObjectURL(opt.mediaFile)} controls className="max-h-12 rounded" />
+                        ) : null}
+                      </span>
+                    )}
+                    {opt.mediaUrl && !opt.mediaFile && (
+                      <span className="ml-2">
+                        {opt.mediaUrl.includes('image') ? (
+                          <img src={opt.mediaUrl} alt="Mevcut Şık Medya" className="max-h-12 rounded" />
+                        ) : (
+                          <video src={opt.mediaUrl} controls className="max-h-12 rounded" />
+                        )}
+                      </span>
+                    )}
+                    <label className="flex items-center gap-1 text-xs">
+                      <input type="checkbox" checked={opt.isCorrect || false} onChange={e => handleOptionChange(oi, 'isCorrect', e.target.checked)} /> Doğru
+                    </label>
+                  </div>
+                ))}
+              </div>
               <button type="submit" className="w-full bg-yellow-400 text-white font-semibold py-3 rounded-xl shadow hover:bg-yellow-500 transition">Kaydet</button>
+              {questionFormError && <div className="text-red-500 text-sm mt-2">{questionFormError}</div>}
             </form>
           </div>
         </div>

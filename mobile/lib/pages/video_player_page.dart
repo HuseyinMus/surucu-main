@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
+import 'pdf_viewer_page.dart';
 
 class LearningPage extends StatefulWidget {
   final Map<String, dynamic> content;
@@ -930,9 +931,9 @@ class _LearningPageState extends State<LearningPage> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => _openUrl(currentContent['contentUrl']),
-                  icon: const Icon(Icons.open_in_browser),
-                  label: const Text('PDF\'i Aç'),
+                  onPressed: () => _openPdfInApp(currentContent['contentUrl']),
+                  icon: const Icon(Icons.picture_as_pdf),
+                  label: const Text('PDF\'i Oku'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFBBC04),
                     foregroundColor: Colors.black,
@@ -1242,6 +1243,21 @@ class _LearningPageState extends State<LearningPage> {
     } catch (e) {
       _showUrlDialog(url);
     }
+  }
+
+  void _openPdfInApp(String pdfUrl) {
+    final currentContent = courseContents[currentIndex];
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PdfViewerPage(
+          pdfUrl: pdfUrl,
+          title: currentContent['title'] ?? 'PDF Dökümanı',
+          content: currentContent,
+          course: widget.course,
+        ),
+      ),
+    );
   }
 
   void _showUrlDialog(String url) {

@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "5AqlA5+3CDrXz9s3vj4ozqM9K6a2+Seyhp2qU7YjuYPdA1dd3K12Kvci/+9g0j2pk/JWj2DsGOagVc3ds2aLbQ==",
+  "dgSpecHash": "0wvx3vx4hxgqz60duHUg43BB3tYhV66UiIxYYOGBdBC37pRDoL4AjqXVeK27Lq+ebtzvUEW5uUTh4Vk0EiZdcw==",
   "success": true,
-  "projectFilePath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\webapi\\CleanArchApi.csproj",
+  "projectFilePath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\WebAPI\\CleanArchApi.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\Eser Medya\\.nuget\\packages\\bcrypt.net-next\\4.0.3\\bcrypt.net-next.4.0.3.nupkg.sha512",
     "C:\\Users\\Eser Medya\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\Eser Medya\\.nuget\\packages\\mediatr\\12.1.1\\mediatr.12.1.1.nupkg.sha512",
     "C:\\Users\\Eser Medya\\.nuget\\packages\\mediatr.contracts\\2.0.1\\mediatr.contracts.2.0.1.nupkg.sha512",

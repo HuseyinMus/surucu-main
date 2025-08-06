@@ -23,17 +23,27 @@ export default function NotificationsPage() {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [editingNotification, setEditingNotification] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [newNotification, setNewNotification] = useState({
     title: "",
     message: "",
-    type: "info",
-    recipientType: "all",
-    scheduledDate: ""
+    type: "Info",
+    priority: "Normal",
+    recipientType: "All",
+    scheduleType: "Immediate",
+    scheduledDate: "",
+    recurrenceType: "None",
+    recurrenceInterval: 1,
+    recurrenceEndDate: "",
+    recurrenceDays: [],
+    tags: [],
+    isAutomated: false
   });
 
   useEffect(() => {
@@ -44,7 +54,10 @@ export default function NotificationsPage() {
         const token = localStorage.getItem("token");
         const headers = token ? { "Authorization": `Bearer ${token}` } : {};
         const res = await fetch(buildApiUrl(API_ENDPOINTS.NOTIFICATIONS), { headers });
-        if (!res.ok) throw new Error("Bildirimler alınamadı");
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(`HTTP ${res.status}: ${errorText}`);
+        }
         const data = await res.json();
         setNotifications(data);
       } catch (error) {
@@ -56,51 +69,107 @@ export default function NotificationsPage() {
     fetchNotifications();
   }, []);
 
-  const filteredNotifications = notifications.filter(notification =>
-    notification.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    notification.message?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredNotifications = notifications.filter(notification => {
+    const matchesSearch = notification.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         notification.message?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = !filterType || notification.type === filterType;
+    const matchesStatus = !filterStatus || notification.status === filterStatus;
+    return matchesSearch && matchesType && matchesStatus;
+  });
 
   const formatDate = (dateString) => {
     if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString('tr-TR');
+    try {
+      return new Date(dateString).toLocaleDateString('tr-TR');
+    } catch (error) {
+      console.error("Tarih format hatası:", error);
+      return "-";
+    }
   };
 
   const formatTime = (dateString) => {
     if (!dateString) return "-";
-    return new Date(dateString).toLocaleTimeString('tr-TR', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    try {
+      return new Date(dateString).toLocaleTimeString('tr-TR', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+    } catch (error) {
+      console.error("Saat format hatası:", error);
+      return "-";
+    }
   };
 
   const getTypeColor = (type) => {
     switch (type) {
-      case "info": return "bg-blue-100 text-blue-800";
-      case "success": return "bg-green-100 text-green-800";
-      case "warning": return "bg-yellow-100 text-yellow-800";
-      case "error": return "bg-red-100 text-red-800";
+      case "Info": return "bg-blue-100 text-blue-800";
+      case "Success": return "bg-green-100 text-green-800";
+      case "Warning": return "bg-yellow-100 text-yellow-800";
+      case "Error": return "bg-red-100 text-red-800";
+      case "Reminder": return "bg-purple-100 text-purple-800";
+      case "Alert": return "bg-orange-100 text-orange-800";
+      case "Announcement": return "bg-indigo-100 text-indigo-800";
       default: return "bg-gray-100 text-gray-800";
     }
   };
 
   const getTypeIcon = (type) => {
     switch (type) {
-      case "info": return <Info size={16} />;
-      case "success": return <CheckCircle size={16} />;
-      case "warning": return <AlertCircle size={16} />;
-      case "error": return <XCircle size={16} />;
+      case "Info": return <Info size={16} />;
+      case "Success": return <CheckCircle size={16} />;
+      case "Warning": return <AlertCircle size={16} />;
+      case "Error": return <XCircle size={16} />;
+      case "Reminder": return <Calendar size={16} />;
+      case "Alert": return <AlertCircle size={16} />;
+      case "Announcement": return <Bell size={16} />;
       default: return <Bell size={16} />;
     }
   };
 
   const getTypeBgColor = (type) => {
     switch (type) {
-      case "info": return "bg-blue-600";
-      case "success": return "bg-green-600";
-      case "warning": return "bg-yellow-600";
-      case "error": return "bg-red-600";
+      case "Info": return "bg-blue-600";
+      case "Success": return "bg-green-600";
+      case "Warning": return "bg-yellow-600";
+      case "Error": return "bg-red-600";
+      case "Reminder": return "bg-purple-600";
+      case "Alert": return "bg-orange-600";
+      case "Announcement": return "bg-indigo-600";
       default: return "bg-gray-600";
+    }
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case "Low": return "bg-gray-100 text-gray-800";
+      case "Normal": return "bg-blue-100 text-blue-800";
+      case "High": return "bg-orange-100 text-orange-800";
+      case "Urgent": return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "Draft": return "text-gray-600";
+      case "Scheduled": return "text-blue-600";
+      case "Sent": return "text-green-600";
+      case "Failed": return "text-red-600";
+      case "Cancelled": return "text-gray-600";
+      case "Pending": return "text-yellow-600";
+      default: return "text-gray-600";
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case "Draft": return "Taslak";
+      case "Scheduled": return "Zamanlandı";
+      case "Sent": return "Gönderildi";
+      case "Failed": return "Başarısız";
+      case "Cancelled": return "İptal Edildi";
+      case "Pending": return "Beklemede";
+      default: return "Bilinmiyor";
     }
   };
 
@@ -149,8 +218,11 @@ export default function NotificationsPage() {
     }
   };
 
-  const handleAddNotification = async (e) => {
-    e.preventDefault();
+  const handleResendNotification = async (notificationId) => {
+    if (!window.confirm("Bu bildirimi yeniden göndermek istediğinizden emin misiniz?")) {
+      return;
+    }
+
     try {
       const token = localStorage.getItem("token");
       const headers = {
@@ -158,10 +230,98 @@ export default function NotificationsPage() {
         "Content-Type": "application/json"
       };
 
-      // Add a dummy UserId for "all" recipients, or get from user context
+      const res = await fetch(buildApiUrl(`${API_ENDPOINTS.NOTIFICATIONS}/${notificationId}/resend`), {
+        method: "POST",
+        headers,
+        body: JSON.stringify({})
+      });
+
+      if (res.ok) {
+        // Bildirim listesini yenile
+        window.location.reload();
+      } else {
+        const errorText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+    } catch (error) {
+      console.error("Bildirim yeniden gönderme hatası:", error);
+      setError("Bildirim yeniden gönderilirken hata oluştu.");
+    }
+  };
+
+  const handleCancelNotification = async (notificationId) => {
+    if (!window.confirm("Bu bildirimi iptal etmek istediğinizden emin misiniz?")) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const headers = {
+        "Authorization": `Bearer ${token}`
+      };
+
+      const res = await fetch(buildApiUrl(`${API_ENDPOINTS.NOTIFICATIONS}/${notificationId}/cancel`), {
+        method: "POST",
+        headers
+      });
+
+      if (res.ok) {
+        // Bildirim durumunu güncelle
+        setNotifications(notifications.map(notification => 
+          notification.id === notificationId 
+            ? { ...notification, status: "Cancelled" }
+            : notification
+        ));
+      } else {
+        const errorText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+    } catch (error) {
+      console.error("Bildirim iptal etme hatası:", error);
+      setError("Bildirim iptal edilirken hata oluştu.");
+    }
+  };
+
+  const handleAddNotification = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError("");
+    
+    // Form validation
+    if (!newNotification.title.trim()) {
+      setError("Başlık alanı zorunludur.");
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (!newNotification.message.trim()) {
+      setError("Mesaj alanı zorunludur.");
+      setIsSubmitting(false);
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem("token");
+      const headers = {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      };
+
+      // Backend'e uygun format gönder
       const notificationData = {
-        ...newNotification,
-        userId: "00000000-0000-0000-0000-000000000000" // Empty GUID for "all" recipients
+        title: newNotification.title,
+        message: newNotification.message,
+        type: newNotification.type,
+        priority: newNotification.priority,
+        recipientType: newNotification.recipientType,
+        scheduleType: newNotification.scheduleType,
+        scheduledDate: newNotification.scheduledDate || null,
+        recurrenceType: newNotification.recurrenceType,
+        recurrenceInterval: newNotification.recurrenceInterval,
+        recurrenceEndDate: newNotification.recurrenceEndDate || null,
+        recurrenceDays: newNotification.recurrenceDays,
+        tags: newNotification.tags,
+        isAutomated: newNotification.isAutomated
       };
 
       const res = await fetch(buildApiUrl(API_ENDPOINTS.NOTIFICATIONS), {
@@ -174,25 +334,44 @@ export default function NotificationsPage() {
         const addedNotification = await res.json();
         setNotifications([...notifications, addedNotification]);
         setShowAddModal(false);
-        setNewNotification({
-          title: "",
-          message: "",
-          type: "info",
-          recipientType: "all",
-          scheduledDate: ""
-        });
+        resetNewNotification();
       } else {
         const errorText = await res.text();
-        throw new Error(`HTTP ${res.status}: ${errorText}`);
+        let errorMessage = "Bildirim eklenirken hata oluştu.";
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error("Bildirim ekleme hatası:", error);
       setError("Bildirim eklenirken hata oluştu. Lütfen tüm alanları kontrol edin.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleUpdateNotification = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    setError("");
+    
+    // Form validation
+    if (!editingNotification.title.trim()) {
+      setError("Başlık alanı zorunludur.");
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (!editingNotification.message.trim()) {
+      setError("Mesaj alanı zorunludur.");
+      setIsSubmitting(false);
+      return;
+    }
+    
     try {
       const token = localStorage.getItem("token");
       const headers = {
@@ -200,10 +379,19 @@ export default function NotificationsPage() {
         "Content-Type": "application/json"
       };
 
+      // Backend'e uygun format gönder
+      const updateData = {
+        title: editingNotification.title,
+        message: editingNotification.message,
+        type: editingNotification.type,
+        recipientType: editingNotification.recipientType,
+        scheduledDate: editingNotification.scheduledDate || null
+      };
+
       const res = await fetch(buildApiUrl(`${API_ENDPOINTS.NOTIFICATIONS}/${editingNotification.id}`), {
         method: "PUT",
         headers,
-        body: JSON.stringify(editingNotification)
+        body: JSON.stringify(updateData)
       });
 
       if (res.ok) {
@@ -215,11 +403,20 @@ export default function NotificationsPage() {
         setEditingNotification(null);
       } else {
         const errorText = await res.text();
-        throw new Error(`HTTP ${res.status}: ${errorText}`);
+        let errorMessage = "Bildirim güncellenirken hata oluştu.";
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error("Bildirim güncelleme hatası:", error);
-      setError("Bildirim güncellenirken hata oluştu. Lütfen tüm alanları kontrol edin.");
+      setError(error.message || "Bildirim güncellenirken hata oluştu. Lütfen tüm alanları kontrol edin.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -229,6 +426,39 @@ export default function NotificationsPage() {
       ...prev,
       [name]: value
     }));
+  };
+
+  const resetNewNotification = () => {
+    setNewNotification({
+      title: "",
+      message: "",
+      type: "Info",
+      priority: "Normal",
+      recipientType: "All",
+      scheduleType: "Immediate",
+      scheduledDate: "",
+      recurrenceType: "None",
+      recurrenceInterval: 1,
+      recurrenceEndDate: "",
+      recurrenceDays: [],
+      tags: [],
+      isAutomated: false
+    });
+  };
+
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    resetNewNotification();
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditingNotification(null);
+  };
+
+  const closeDetailModal = () => {
+    setShowDetailModal(false);
+    setSelectedNotification(null);
   };
 
   const handleEditInputChange = (e) => {
@@ -243,7 +473,7 @@ export default function NotificationsPage() {
     return (
       <div className="min-h-screen bg-google-gray-50 font-inter">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-google-blue"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
         </div>
       </div>
     );
@@ -287,18 +517,36 @@ export default function NotificationsPage() {
               />
             </div>
 
-            {/* Type Filter */}
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
-            >
-              <option value="">Tüm Türler</option>
-              <option value="info">Bilgi</option>
-              <option value="success">Başarı</option>
-              <option value="warning">Uyarı</option>
-              <option value="error">Hata</option>
-            </select>
+                         {/* Type Filter */}
+             <select
+               value={filterType}
+               onChange={(e) => setFilterType(e.target.value)}
+               className="px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+             >
+               <option value="">Tüm Türler</option>
+               <option value="Info">Bilgi</option>
+               <option value="Success">Başarı</option>
+               <option value="Warning">Uyarı</option>
+               <option value="Error">Hata</option>
+               <option value="Reminder">Hatırlatma</option>
+               <option value="Alert">Uyarı</option>
+               <option value="Announcement">Duyuru</option>
+             </select>
+
+             {/* Status Filter */}
+             <select
+               value={filterStatus}
+               onChange={(e) => setFilterStatus(e.target.value)}
+               className="px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+             >
+               <option value="">Tüm Durumlar</option>
+               <option value="Draft">Taslak</option>
+               <option value="Scheduled">Zamanlandı</option>
+               <option value="Sent">Gönderildi</option>
+               <option value="Failed">Başarısız</option>
+               <option value="Cancelled">İptal Edildi</option>
+               <option value="Pending">Beklemede</option>
+             </select>
           </div>
         </div>
       </div>
@@ -312,7 +560,7 @@ export default function NotificationsPage() {
         )}
 
         {/* Notification Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filteredNotifications.map((notification) => (
             <div key={notification.id} className="bg-white rounded-xl shadow-sm border border-google-gray-200 hover:shadow-md transition-shadow duration-200 overflow-hidden">
               {/* Notification Header */}
@@ -332,62 +580,103 @@ export default function NotificationsPage() {
                     </div>
                   </div>
                   
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleViewNotification(notification)}
-                      className="p-2 hover:bg-google-gray-100 rounded-lg transition-colors duration-200"
-                    >
-                      <Eye size={16} className="text-google-gray-600" />
-                    </button>
-                    <button
-                      onClick={() => handleEditNotification(notification)}
-                      className="p-2 hover:bg-google-gray-100 rounded-lg transition-colors duration-200"
-                    >
-                      <Edit size={16} className="text-google-gray-600" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteNotification(notification.id)}
-                      className="p-2 hover:bg-red-100 rounded-lg transition-colors duration-200"
-                    >
-                      <Trash2 size={16} className="text-red-600" />
-                    </button>
-                  </div>
+                                     <div className="flex gap-2">
+                     <button
+                       onClick={() => handleViewNotification(notification)}
+                       className="p-2 hover:bg-google-gray-100 rounded-lg transition-colors duration-200"
+                       title="Detayları Görüntüle"
+                     >
+                       <Eye size={16} className="text-google-gray-600" />
+                     </button>
+                     <button
+                       onClick={() => handleEditNotification(notification)}
+                       className="p-2 hover:bg-google-gray-100 rounded-lg transition-colors duration-200"
+                       title="Düzenle"
+                     >
+                       <Edit size={16} className="text-google-gray-600" />
+                     </button>
+                     {notification.status === "Sent" && (
+                       <button
+                         onClick={() => handleResendNotification(notification.id)}
+                         className="p-2 hover:bg-blue-100 rounded-lg transition-colors duration-200"
+                         title="Yeniden Gönder"
+                       >
+                         <Mail size={16} className="text-blue-600" />
+                       </button>
+                     )}
+                     {(notification.status === "Scheduled" || notification.status === "Pending") && (
+                       <button
+                         onClick={() => handleCancelNotification(notification.id)}
+                         className="p-2 hover:bg-orange-100 rounded-lg transition-colors duration-200"
+                         title="İptal Et"
+                       >
+                         <XCircle size={16} className="text-orange-600" />
+                       </button>
+                     )}
+                     <button
+                       onClick={() => handleDeleteNotification(notification.id)}
+                       className="p-2 hover:bg-red-100 rounded-lg transition-colors duration-200"
+                       title="Sil"
+                     >
+                       <Trash2 size={16} className="text-red-600" />
+                     </button>
+                   </div>
                 </div>
 
                 {/* Type */}
-                <div className="flex items-center gap-2">
-                  <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(notification.type)}`}>
-                    {getTypeIcon(notification.type)}
-                    {notification.type === "info" ? "Bilgi" : 
-                     notification.type === "success" ? "Başarı" : 
-                     notification.type === "warning" ? "Uyarı" : 
-                     notification.type === "error" ? "Hata" : "Bilinmiyor"}
-                  </span>
-                </div>
+                                 <div className="flex items-center gap-2">
+                   <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(notification.type)}`}>
+                     {getTypeIcon(notification.type)}
+                     {notification.type === "Info" ? "Bilgi" : 
+                      notification.type === "Success" ? "Başarı" : 
+                      notification.type === "Warning" ? "Uyarı" : 
+                      notification.type === "Error" ? "Hata" : 
+                      notification.type === "Reminder" ? "Hatırlatma" :
+                      notification.type === "Alert" ? "Uyarı" :
+                      notification.type === "Announcement" ? "Duyuru" : "Bilinmiyor"}
+                   </span>
+                   <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(notification.priority)}`}>
+                     {notification.priority === "Low" ? "Düşük" : 
+                      notification.priority === "Normal" ? "Normal" : 
+                      notification.priority === "High" ? "Yüksek" : 
+                      notification.priority === "Urgent" ? "Acil" : "Normal"}
+                   </span>
+                 </div>
               </div>
 
               {/* Notification Details */}
               <div className="p-6 space-y-3">
-                <div className="flex items-center gap-3 text-sm">
-                  <Calendar className="w-4 h-4 text-google-gray-400" />
-                  <span className="text-google-gray-700">
-                    Tarih: {formatDate(notification.createdAt)}
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-3 text-sm">
-                  <MessageSquare className="w-4 h-4 text-google-gray-400" />
-                  <span className="text-google-gray-700">
-                    Gönderen: {notification.sender || "Sistem"}
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-3 text-sm">
-                  <Users className="w-4 h-4 text-google-gray-400" />
-                  <span className="text-google-gray-700">
-                    Alıcı: {notification.recipientCount || 0} kişi
-                  </span>
-                </div>
+                                 <div className="flex items-center gap-3 text-sm">
+                   <Calendar className="w-4 h-4 text-google-gray-400" />
+                   <span className="text-google-gray-700">
+                     Oluşturulma: {formatDate(notification.createdAt)}
+                   </span>
+                 </div>
+                 
+                 {notification.sentAt && (
+                   <div className="flex items-center gap-3 text-sm">
+                     <MessageSquare className="w-4 h-4 text-google-gray-400" />
+                     <span className="text-google-gray-700">
+                       Gönderilme: {formatDate(notification.sentAt)}
+                     </span>
+                   </div>
+                 )}
+                 
+                 <div className="flex items-center gap-3 text-sm">
+                   <Users className="w-4 h-4 text-google-gray-400" />
+                   <span className="text-google-gray-700">
+                     Alıcı: {notification.totalRecipients || 0} kişi
+                   </span>
+                 </div>
+
+                 {notification.scheduleType && notification.scheduleType !== "Immediate" && (
+                   <div className="flex items-center gap-3 text-sm">
+                     <Calendar className="w-4 h-4 text-google-gray-400" />
+                     <span className="text-google-gray-700">
+                       Zamanlama: {notification.scheduleType === "Scheduled" ? "Zamanlanmış" : "Tekrarlayan"}
+                     </span>
+                   </div>
+                 )}
 
                 {notification.message && (
                   <div className="pt-3 border-t border-google-gray-100">
@@ -397,17 +686,32 @@ export default function NotificationsPage() {
                   </div>
                 )}
 
-                {/* Status */}
-                <div className="pt-3 border-t border-google-gray-100">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-google-gray-600">Durum</span>
-                    <span className={`text-sm font-medium ${
-                      notification.isRead ? 'text-green-600' : 'text-yellow-600'
-                    }`}>
-                      {notification.isRead ? 'Okundu' : 'Okunmadı'}
-                    </span>
-                  </div>
-                </div>
+                                 {/* Status and Analytics */}
+                 <div className="pt-3 border-t border-google-gray-100 space-y-2">
+                   <div className="flex justify-between items-center">
+                     <span className="text-sm text-google-gray-600">Durum</span>
+                     <span className={`text-sm font-medium ${getStatusColor(notification.status)}`}>
+                       {getStatusText(notification.status)}
+                     </span>
+                   </div>
+                   
+                   {notification.status === "Sent" && (
+                     <>
+                       <div className="flex justify-between items-center">
+                         <span className="text-sm text-google-gray-600">Açılma Oranı</span>
+                         <span className="text-sm font-medium text-green-600">
+                           {notification.openRate?.toFixed(1) || 0}%
+                         </span>
+                       </div>
+                       <div className="flex justify-between items-center">
+                         <span className="text-sm text-google-gray-600">Tıklanma Oranı</span>
+                         <span className="text-sm font-medium text-blue-600">
+                           {notification.clickRate?.toFixed(1) || 0}%
+                         </span>
+                       </div>
+                     </>
+                   )}
+                 </div>
               </div>
             </div>
           ))}
@@ -425,12 +729,12 @@ export default function NotificationsPage() {
       {/* Add Notification Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto mx-4">
             <div className="p-6 border-b border-google-gray-200">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-google-gray-900">Yeni Bildirim Ekle</h2>
                 <button
-                  onClick={() => setShowAddModal(false)}
+                  onClick={closeAddModal}
                   className="text-google-gray-400 hover:text-google-gray-600"
                 >
                   ✕
@@ -469,68 +773,176 @@ export default function NotificationsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
-                    Tür *
-                  </label>
-                  <select
-                    name="type"
-                    value={newNotification.type}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
-                  >
-                    <option value="info">Bilgi</option>
-                    <option value="success">Başarı</option>
-                    <option value="warning">Uyarı</option>
-                    <option value="error">Hata</option>
-                  </select>
-                </div>
+                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <div>
+                   <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                     Tür *
+                   </label>
+                   <select
+                     name="type"
+                     value={newNotification.type}
+                     onChange={handleInputChange}
+                     className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                   >
+                     <option value="Info">Bilgi</option>
+                     <option value="Success">Başarı</option>
+                     <option value="Warning">Uyarı</option>
+                     <option value="Error">Hata</option>
+                     <option value="Reminder">Hatırlatma</option>
+                     <option value="Alert">Uyarı</option>
+                     <option value="Announcement">Duyuru</option>
+                   </select>
+                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-google-gray-700 mb-2">
-                    Alıcı Türü *
-                  </label>
-                  <select
-                    name="recipientType"
-                    value={newNotification.recipientType}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
-                  >
-                    <option value="all">Tüm Kullanıcılar</option>
-                    <option value="students">Öğrenciler</option>
-                    <option value="instructors">Eğitmenler</option>
-                    <option value="admins">Yöneticiler</option>
-                  </select>
-                </div>
-              </div>
+                 <div>
+                   <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                     Öncelik *
+                   </label>
+                   <select
+                     name="priority"
+                     value={newNotification.priority}
+                     onChange={handleInputChange}
+                     className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                   >
+                     <option value="Low">Düşük</option>
+                     <option value="Normal">Normal</option>
+                     <option value="High">Yüksek</option>
+                     <option value="Urgent">Acil</option>
+                   </select>
+                 </div>
 
-              <div>
-                <label className="block text-sm font-medium text-google-gray-700 mb-2">
-                  Zamanlanmış Tarih
-                </label>
-                <input
-                  type="datetime-local"
-                  name="scheduledDate"
-                  value={newNotification.scheduledDate}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
-                />
-              </div>
+                 <div>
+                   <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                     Alıcı Türü *
+                   </label>
+                   <select
+                     name="recipientType"
+                     value={newNotification.recipientType}
+                     onChange={handleInputChange}
+                     className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                   >
+                     <option value="All">Tüm Kullanıcılar</option>
+                     <option value="Students">Öğrenciler</option>
+                     <option value="Instructors">Eğitmenler</option>
+                     <option value="Admins">Yöneticiler</option>
+                     <option value="Specific">Belirli Kullanıcılar</option>
+                   </select>
+                 </div>
+               </div>
+
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div>
+                   <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                     Gönderim Tipi *
+                   </label>
+                   <select
+                     name="scheduleType"
+                     value={newNotification.scheduleType}
+                     onChange={handleInputChange}
+                     className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                   >
+                     <option value="Immediate">Anında</option>
+                     <option value="Scheduled">Zamanlanmış</option>
+                     <option value="Recurring">Tekrarlayan</option>
+                   </select>
+                 </div>
+
+                 {newNotification.scheduleType !== "Immediate" && (
+                   <div>
+                     <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                       Zamanlanmış Tarih
+                     </label>
+                     <input
+                       type="datetime-local"
+                       name="scheduledDate"
+                       value={newNotification.scheduledDate}
+                       onChange={handleInputChange}
+                       className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                     />
+                   </div>
+                 )}
+               </div>
+
+               {newNotification.scheduleType === "Recurring" && (
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                   <div>
+                     <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                       Tekrarlama Tipi
+                     </label>
+                     <select
+                       name="recurrenceType"
+                       value={newNotification.recurrenceType}
+                       onChange={handleInputChange}
+                       className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                     >
+                       <option value="None">Yok</option>
+                       <option value="Daily">Günlük</option>
+                       <option value="Weekly">Haftalık</option>
+                       <option value="Monthly">Aylık</option>
+                       <option value="Yearly">Yıllık</option>
+                     </select>
+                   </div>
+
+                   <div>
+                     <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                       Tekrarlama Aralığı
+                     </label>
+                     <input
+                       type="number"
+                       name="recurrenceInterval"
+                       value={newNotification.recurrenceInterval}
+                       onChange={handleInputChange}
+                       min="1"
+                       className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                     />
+                   </div>
+
+                   <div>
+                     <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                       Bitiş Tarihi
+                     </label>
+                     <input
+                       type="datetime-local"
+                       name="recurrenceEndDate"
+                       value={newNotification.recurrenceEndDate}
+                       onChange={handleInputChange}
+                       className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                     />
+                   </div>
+                 </div>
+               )}
+
+               <div>
+                 <label className="block text-sm font-medium text-google-gray-700 mb-2">
+                   Etiketler (virgülle ayırın)
+                 </label>
+                 <input
+                   type="text"
+                   name="tags"
+                   value={newNotification.tags.join(", ")}
+                   onChange={(e) => {
+                     const tags = e.target.value.split(",").map(tag => tag.trim()).filter(tag => tag);
+                     setNewNotification(prev => ({ ...prev, tags }));
+                   }}
+                   placeholder="sınav, duyuru, önemli"
+                   className="w-full px-4 py-2 border border-google-gray-300 rounded-lg focus:ring-2 focus:ring-google-blue focus:border-transparent"
+                 />
+               </div>
 
               <div className="flex gap-4 pt-6 border-t border-google-gray-200">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={closeAddModal}
                   className="flex-1 px-4 py-2 border border-google-gray-300 text-google-gray-700 rounded-lg hover:bg-google-gray-50 transition-colors duration-200"
                 >
                   İptal
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-google-blue text-white rounded-lg hover:bg-blue-600 transition-colors duration-200"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2 bg-google-blue text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Bildirim Ekle
+                  {isSubmitting ? "Ekleniyor..." : "Bildirim Ekle"}
                 </button>
               </div>
             </form>
@@ -538,15 +950,15 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {/* Notification Detail Modal */}
-      {showDetailModal && selectedNotification && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+             {/* Notification Detail Modal */}
+       {showDetailModal && selectedNotification && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto mx-4">
             <div className="p-6 border-b border-google-gray-200">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-google-gray-900">Bildirim Detayları</h2>
                 <button
-                  onClick={() => setShowDetailModal(false)}
+                  onClick={closeDetailModal}
                   className="text-google-gray-400 hover:text-google-gray-600"
                 >
                   ✕
@@ -621,7 +1033,7 @@ export default function NotificationsPage() {
 
               <div className="flex gap-4 pt-6 border-t border-google-gray-200">
                 <button
-                  onClick={() => setShowDetailModal(false)}
+                  onClick={closeDetailModal}
                   className="flex-1 px-4 py-2 border border-google-gray-300 text-google-gray-700 rounded-lg hover:bg-google-gray-50 transition-colors duration-200"
                 >
                   Kapat
@@ -632,15 +1044,15 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {/* Edit Notification Modal */}
-      {showEditModal && editingNotification && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+             {/* Edit Notification Modal */}
+       {showEditModal && editingNotification && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto mx-4">
             <div className="p-6 border-b border-google-gray-200">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-google-gray-900">Bildirim Düzenle</h2>
                 <button
-                  onClick={() => setShowEditModal(false)}
+                  onClick={closeEditModal}
                   className="text-google-gray-400 hover:text-google-gray-600"
                 >
                   ✕
@@ -731,16 +1143,17 @@ export default function NotificationsPage() {
               <div className="flex gap-4 pt-6 border-t border-google-gray-200">
                 <button
                   type="button"
-                  onClick={() => setShowEditModal(false)}
+                  onClick={closeEditModal}
                   className="flex-1 px-4 py-2 border border-google-gray-300 text-google-gray-700 rounded-lg hover:bg-google-gray-50 transition-colors duration-200"
                 >
                   İptal
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-google-blue text-white rounded-lg hover:bg-blue-600 transition-colors duration-200"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2 bg-google-blue text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Güncelle
+                  {isSubmitting ? "Güncelleniyor..." : "Güncelle"}
                 </button>
               </div>
             </form>

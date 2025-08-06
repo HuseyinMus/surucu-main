@@ -51,32 +51,31 @@ class _QuizzesPageState extends State<QuizzesPage> with TickerProviderStateMixin
         final studentId = userProfile?['id']?.toString() ?? '';
 
         // Her quiz için progress bilgilerini al
-        final updatedQuizzes = await Future.wait(
-          quizzesData.map((quiz) async {
-            Map<String, dynamic> quizProgress = {};
-            
-            if (studentId.isNotEmpty) {
-              // Quiz progress bilgilerini API'den al
-              quizProgress = await ApiService.getQuizProgress(studentId, quiz['id'].toString()) ?? {};
-            }
+        final updatedQuizzes = <Map<String, dynamic>>[];
+        for (final quiz in quizzesData) {
+          Map<String, dynamic> quizProgress = {};
+          
+          if (studentId.isNotEmpty) {
+            // Quiz progress bilgilerini API'den al
+            quizProgress = await ApiService.getQuizProgress(studentId, quiz['id'].toString()) ?? {};
+          }
 
-            return {
-              'id': quiz['id'],
-              'title': quiz['title'] ?? 'Başlıksız Sınav',
-              'description': quiz['description'] ?? '',
-              'difficulty': _mapDifficulty(quiz['difficulty']),
-              'questions': (quiz['questions'] as List?)?.length ?? quiz['questionCount'] ?? 10,
-              'duration': quiz['duration'] ?? 15,
-              'bestScore': quizProgress['bestScore'] ?? 0,
-              'attempts': quizProgress['attempts'] ?? 0,
-              'color': _getQuizColor(quiz['difficulty']),
-              'icon': _getQuizIcon(quiz['category']),
-              'isCompleted': quizProgress['isCompleted'] ?? false,
-              'category': quiz['category'] ?? 'Genel',
-              'createdAt': quiz['createdAt'],
-            };
-          })
-        );
+          updatedQuizzes.add({
+            'id': quiz['id'],
+            'title': quiz['title'] ?? 'Başlıksız Sınav',
+            'description': quiz['description'] ?? '',
+            'difficulty': _mapDifficulty(quiz['difficulty']),
+            'questions': (quiz['questions'] as List?)?.length ?? quiz['questionCount'] ?? 10,
+            'duration': quiz['duration'] ?? 15,
+            'bestScore': quizProgress['bestScore'] ?? 0,
+            'attempts': quizProgress['attempts'] ?? 0,
+            'color': _getQuizColor(quiz['difficulty']),
+            'icon': _getQuizIcon(quiz['category']),
+            'isCompleted': quizProgress['isCompleted'] ?? false,
+            'category': quiz['category'] ?? 'Genel',
+            'createdAt': quiz['createdAt'],
+          });
+        }
 
         setState(() {
           quizzes = updatedQuizzes;

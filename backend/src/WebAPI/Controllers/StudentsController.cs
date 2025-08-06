@@ -144,31 +144,38 @@ public class StudentsController : ControllerBase
                 return BadRequest("DrivingSchoolId bulunamadı");
                 
             var drivingSchoolId = Guid.Parse(drivingSchoolIdClaim);
-            var students = await _studentService.GetAllStudentsAsync();
-            var filtered = students.Where(s => s.DrivingSchoolId == drivingSchoolId);
+            
+            // Doğrudan veritabanından öğrencileri çek, User bilgilerini include et
+            var students = await _db.Students
+                .Include(s => s.User)
+                .Where(s => s.DrivingSchoolId == drivingSchoolId && s.IsActive)
+                .ToListAsync();
             
             // Eğer hiç öğrenci yoksa boş liste döndür
-            if (!filtered.Any())
+            if (!students.Any())
             {
                 return Ok(new List<object>());
             }
             
-            var result = filtered.Select(s => new {
-                s.Id,
-                s.LicenseType,
-                s.RegistrationDate,
-                fullName = s.User != null ? s.User.FullName : null,
-                email = s.User != null ? s.User.Email : null,
+            var result = students.Select(s => new {
+                id = s.Id,
+                licenseType = s.LicenseType,
+                registrationDate = s.RegistrationDate.ToString("yyyy-MM-dd"),
+                fullName = s.User?.FullName ?? "",
+                email = s.User?.Email ?? "",
                 tc = s.TCNumber,
-                telefon = s.PhoneNumber,
+                telefon = s.PhoneNumber ?? s.User?.Phone ?? "",
                 dogumTarihi = s.BirthDate.ToString("yyyy-MM-dd"),
-                cinsiyet = s.Gender,
-                notlar = s.Notes
+                cinsiyet = s.Gender ?? "",
+                notlar = s.Notes ?? "",
+                currentStage = s.CurrentStage.ToString(),
+                isActive = s.IsActive
             });
             return Ok(result);
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"Öğrenci listesi hatası: {ex.Message}");
             return BadRequest($"Öğrenci listesi alınırken hata oluştu: {ex.Message}");
         }
     }

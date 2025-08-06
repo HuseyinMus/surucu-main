@@ -57,3 +57,43 @@ C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\Infrastruc
 C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.pdb
 C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.genruntimeconfig.cache
 C:\Users\Eser Medya\Downloads\surucu-main (1)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\ref\Infrastructure.dll
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\bin\Debug\net8.0\Infrastructure.deps.json
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\bin\Debug\net8.0\Infrastructure.runtimeconfig.json
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\bin\Debug\net8.0\Infrastructure.dll
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\bin\Debug\net8.0\Infrastructure.pdb
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\bin\Debug\net8.0\Application.dll
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\bin\Debug\net8.0\Domain.dll
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\bin\Debug\net8.0\Domain.pdb
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\bin\Debug\net8.0\Application.pdb
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.csproj.AssemblyReference.cache
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.AssemblyInfoInputs.cache
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.AssemblyInfo.cs
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.csproj.CoreCompileInputs.cache
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.sourcelink.json
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastr.15EFFBFE.Up2Date
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.dll
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\refint\Infrastructure.dll
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.pdb
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.genruntimeconfig.cache
+C:\Users\mehme\Source\repos\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\ref\Infrastructure.dll
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\bin\Debug\net8.0\Infrastructure.deps.json
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\bin\Debug\net8.0\Infrastructure.runtimeconfig.json
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\bin\Debug\net8.0\Infrastructure.dll
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\bin\Debug\net8.0\Infrastructure.pdb
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\bin\Debug\net8.0\Application.dll
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\bin\Debug\net8.0\Domain.dll
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\bin\Debug\net8.0\Domain.pdb
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\bin\Debug\net8.0\Application.pdb
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.csproj.AssemblyReference.cache
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.AssemblyInfoInputs.cache
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.AssemblyInfo.cs
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.csproj.CoreCompileInputs.cache
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.sourcelink.json
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastr.15EFFBFE.Up2Date
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.dll
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\refint\Infrastructure.dll
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.pdb
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\Infrastructure.genruntimeconfig.cache
+C:\Users\Eser Medya\Downloads\surucu-main (2)\surucu-main\backend\src\Infrastructure\obj\Debug\net8.0\ref\Infrastructure.dll

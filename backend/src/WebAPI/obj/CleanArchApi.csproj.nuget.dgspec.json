@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\webapi\\CleanArchApi.csproj": {}
+    "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\WebAPI\\CleanArchApi.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Application\\Application.csproj": {
+    "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Application\\Application.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Application\\Application.csproj",
+        "projectUniqueName": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Application\\Application.csproj",
         "projectName": "Application",
-        "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Application\\Application.csproj",
+        "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Application\\Application.csproj",
         "packagesPath": "C:\\Users\\Eser Medya\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Application\\obj\\",
+        "outputPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Application\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Eser Medya\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -28,8 +28,8 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Domain\\Domain.csproj": {
-                "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Domain\\Domain.csproj"
+              "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Domain\\Domain.csproj": {
+                "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Domain\\Domain.csproj"
               }
             }
           }
@@ -74,14 +74,14 @@
         }
       }
     },
-    "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Domain\\Domain.csproj": {
+    "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Domain\\Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Domain\\Domain.csproj",
+        "projectUniqueName": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Domain\\Domain.csproj",
         "projectName": "Domain",
-        "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Domain\\Domain.csproj",
+        "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Domain\\Domain.csproj",
         "packagesPath": "C:\\Users\\Eser Medya\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Domain\\obj\\",
+        "outputPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Domain\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Eser Medya\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -134,14 +134,14 @@
         }
       }
     },
-    "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Infrastructure\\Infrastructure.csproj": {
+    "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Infrastructure\\Infrastructure.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Infrastructure\\Infrastructure.csproj",
+        "projectUniqueName": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Infrastructure\\Infrastructure.csproj",
         "projectName": "Infrastructure",
-        "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Infrastructure\\Infrastructure.csproj",
+        "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Infrastructure\\Infrastructure.csproj",
         "packagesPath": "C:\\Users\\Eser Medya\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Infrastructure\\obj\\",
+        "outputPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Infrastructure\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Eser Medya\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -158,11 +158,11 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Application\\Application.csproj": {
-                "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Application\\Application.csproj"
+              "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Application\\Application.csproj": {
+                "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Application\\Application.csproj"
               },
-              "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Domain\\Domain.csproj": {
-                "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Domain\\Domain.csproj"
+              "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Domain\\Domain.csproj": {
+                "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Domain\\Domain.csproj"
               }
             }
           }
@@ -182,6 +182,10 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "BCrypt.Net-Next": {
+              "target": "Package",
+              "version": "[4.0.3, )"
+            },
             "Microsoft.AspNetCore.Identity": {
               "target": "Package",
               "version": "[2.2.0, )"
@@ -237,14 +241,14 @@
         }
       }
     },
-    "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\webapi\\CleanArchApi.csproj": {
+    "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\WebAPI\\CleanArchApi.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\webapi\\CleanArchApi.csproj",
+        "projectUniqueName": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\WebAPI\\CleanArchApi.csproj",
         "projectName": "CleanArchApi",
-        "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\webapi\\CleanArchApi.csproj",
+        "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\WebAPI\\CleanArchApi.csproj",
         "packagesPath": "C:\\Users\\Eser Medya\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\webapi\\obj\\",
+        "outputPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\WebAPI\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Eser Medya\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -261,11 +265,11 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Application\\Application.csproj": {
-                "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Application\\Application.csproj"
+              "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Application\\Application.csproj": {
+                "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Application\\Application.csproj"
               },
-              "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Infrastructure\\Infrastructure.csproj": {
-                "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Infrastructure\\Infrastructure.csproj"
+              "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Infrastructure\\Infrastructure.csproj": {
+                "projectPath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Infrastructure\\Infrastructure.csproj"
               }
             }
           }

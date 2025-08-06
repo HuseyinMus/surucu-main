@@ -24,6 +24,99 @@ class ApiService {
     };
   }
 
+  // Token yenileme
+  static Future<bool> refreshToken() async {
+    try {
+      final userProfile = await getSavedUserProfile();
+      if (userProfile == null) return false;
+      
+      final tc = userProfile['tcNumber'];
+      if (tc == null) return false;
+      
+      print('Token yenileniyor - TC: $tc');
+      final result = await login(tc);
+      if (result != null) {
+        print('Token başarıyla yenilendi');
+        return true;
+      }
+      print('Token yenileme başarısız');
+      return false;
+    } catch (e) {
+      print('Token yenileme hatası: $e');
+      return false;
+    }
+  }
+
+  // API isteği yapma (token kontrolü ile)
+  static Future<http.Response> makeAuthenticatedRequest(
+    String method, 
+    String endpoint, 
+    {Map<String, dynamic>? body}
+  ) async {
+    final headers = await _authenticatedHeaders;
+    final uri = Uri.parse('$baseUrl$endpoint');
+    
+    print('API isteği: $method $endpoint');
+    print('Headers: ${headers.keys}');
+    
+    http.Response response;
+    
+    try {
+      switch (method.toUpperCase()) {
+        case 'GET':
+          response = await http.get(uri, headers: headers);
+          break;
+        case 'POST':
+          response = await http.post(uri, headers: headers, body: jsonEncode(body));
+          break;
+        case 'PUT':
+          response = await http.put(uri, headers: headers, body: jsonEncode(body));
+          break;
+        case 'DELETE':
+          response = await http.delete(uri, headers: headers);
+          break;
+        default:
+          throw Exception('Geçersiz HTTP metodu: $method');
+      }
+      
+      print('API yanıtı: ${response.statusCode}');
+      
+      // 401 hatası alırsak token yenilemeyi dene
+      if (response.statusCode == 401) {
+        print('401 hatası alındı, token yenileniyor...');
+        final refreshed = await refreshToken();
+        if (refreshed) {
+          print('Token yenilendi, istek tekrar deneniyor...');
+          // Token yenilendiyse isteği tekrar dene
+          final newHeaders = await _authenticatedHeaders;
+          switch (method.toUpperCase()) {
+            case 'GET':
+              response = await http.get(uri, headers: newHeaders);
+              break;
+            case 'POST':
+              response = await http.post(uri, headers: newHeaders, body: jsonEncode(body));
+              break;
+            case 'PUT':
+              response = await http.put(uri, headers: newHeaders, body: jsonEncode(body));
+              break;
+            case 'DELETE':
+              response = await http.delete(uri, headers: newHeaders);
+              break;
+          }
+          print('Yeniden denenen istek yanıtı: ${response.statusCode}');
+        } else {
+          print('Token yenilenemedi, kullanıcı çıkış yapılmalı');
+          await clearToken(); // Token'ı temizle
+        }
+      }
+      
+      return response;
+    } catch (e) {
+      print('API isteği hatası: $e');
+      rethrow;
+    }
+  }
+
   // Token kaydetme
   static Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
@@ -62,11 +155,14 @@ class ApiService {
   // LOGIN
   static Future<Map<String, dynamic>?> login(String tc) async {
     try {
+      print('Login denemesi - TC: $tc');
+      print('Login URL: $baseUrl/auth/login-tc');
+      
       final response = await http.post(
-        Uri.parse('$baseUrl/auth/login-tc'), // Gerçek endpoint'i kullan
+        Uri.parse('$baseUrl/auth/login-tc'),
         headers: _headers,
         body: jsonEncode({
-          'TcNumber': tc, // TC numarası ile login
+          'TcNumber': tc,
         }),
       );
 
@@ -76,6 +172,7 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['token'] != null) {
+          print('Token alındı, kaydediliyor...');
           await saveToken(data['token']);
           
           // Kullanıcı bilgilerini de kaydet
@@ -85,10 +182,11 @@ class ApiService {
             'email': data['email'],
             'role': data['role'],
             'drivingSchoolId': data['drivingSchoolId'],
-            'tcNumber': tc, // TC'yi de ekle
-            'createdAt': DateTime.now().toIso8601String(), // Şimdilik
+            'tcNumber': tc,
+            'createdAt': DateTime.now().toIso8601String(),
           };
           await saveUserProfile(userProfile);
+          print('Kullanıcı profili kaydedildi: ${userProfile['fullName']}');
         }
         return data;
       } else {
@@ -119,11 +217,7 @@ class ApiService {
   // KURSLAR
   static Future<List<Map<String, dynamic>>?> getCourses() async {
     try {
-      final headers = await _authenticatedHeaders;
-      final response = await http.get(
-        Uri.parse('$baseUrl/courses'), // Asıl endpoint'i kullan
-        headers: headers,
-      );
+      final response = await makeAuthenticatedRequest('GET', '/courses');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -141,11 +235,7 @@ class ApiService {
   // KURS DETAYI
   static Future<Map<String, dynamic>?> getCourseDetail(dynamic courseId) async {
     try {
-      final headers = await _authenticatedHeaders;
-      final response = await http.get(
-        Uri.parse('$baseUrl/courses/$courseId'),
-        headers: headers,
-      );
+      final response = await makeAuthenticatedRequest('GET', '/courses/$courseId');
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -162,11 +252,7 @@ class ApiService {
   // QUIZLER
   static Future<List<Map<String, dynamic>>?> getQuizzes() async {
     try {
-      final headers = await _authenticatedHeaders;
-      final response = await http.get(
-        Uri.parse('$baseUrl/quizzes'),
-        headers: headers,
-      );
+      final response = await makeAuthenticatedRequest('GET', '/quizzes');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -379,10 +465,17 @@ class ApiService {
   // API TEST
   static Future<bool> testConnection() async {
     try {
+      print('API bağlantı testi başlatılıyor...');
+      print('Test URL: $baseUrl/health');
+      
       final response = await http.get(
         Uri.parse('$baseUrl/health'),
         headers: _headers,
       );
+      
+      print('API test yanıtı: ${response.statusCode}');
+      print('API test body: ${response.body}');
+      
       return response.statusCode == 200;
     } catch (e) {
       print('API bağlantı testi hatası: $e');
@@ -393,10 +486,16 @@ class ApiService {
   // HEALTH CHECK WITH DATABASE
   static Future<Map<String, dynamic>?> healthCheck() async {
     try {
+      print('Health check başlatılıyor...');
+      print('Health check URL: $baseUrl/health');
+      
       final response = await http.get(
         Uri.parse('$baseUrl/health'),
         headers: _headers,
       );
+      
+      print('Health check yanıtı: ${response.statusCode}');
+      print('Health check body: ${response.body}');
       
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -450,12 +549,7 @@ class ApiService {
   // Kurs progress detayı
   static Future<Map<String, dynamic>?> getCourseProgress(String studentId, String courseId) async {
     try {
-      final headers = await _authenticatedHeaders;
-      // StudentId parametresini kaldır, backend JWT token'dan alacak
-      final response = await http.get(
-        Uri.parse('$baseUrl/studentprogress/course/$courseId'),
-        headers: headers,
-      );
+      final response = await makeAuthenticatedRequest('GET', '/studentprogress/course/$courseId');
 
       if (response.statusCode == 200) {
         // Backend tek bir obje döndürüyor, liste değil
@@ -493,12 +587,7 @@ class ApiService {
   // Dashboard progress özeti
   static Future<Map<String, dynamic>?> getDashboardProgress(String studentId) async {
     try {
-      final headers = await _authenticatedHeaders;
-      // StudentId parametresini kaldır, backend JWT token'dan alacak
-      final response = await http.get(
-        Uri.parse('$baseUrl/studentprogress/dashboard'),
-        headers: headers,
-      );
+      final response = await makeAuthenticatedRequest('GET', '/studentprogress/dashboard');
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -610,14 +699,47 @@ class ApiService {
         headers: headers,
       );
 
+      print('Content progress API response status: ${response.statusCode}');
+      print('Content progress API response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data;
+      } else if (response.statusCode == 404) {
+        print('Content progress bulunamadı, yeni kayıt oluşturulacak');
+        return null;
+      }
+      return null;
+    } catch (e) {
+      print('Content progress hatası: $e');
+      return null;
+    }
+  }
+
+  // Content progress güncelleme
+  static Future<Map<String, dynamic>?> updateContentProgress(String studentId, String courseId, String contentId, int progress, int timeSpent) async {
+    try {
+      final headers = await _authenticatedHeaders;
+      final response = await http.post(
+        Uri.parse('$baseUrl/studentprogress/content/$studentId/$courseId/$contentId/update'),
+        headers: headers,
+        body: jsonEncode({
+          'progress': progress,
+          'timeSpent': timeSpent,
+          'isCompleted': progress >= 100,
+        }),
+      );
+
+      print('Update content progress API response status: ${response.statusCode}');
+      print('Update content progress API response body: ${response.body}');
+      
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data;
       }
-      print('Content progress API response status: ${response.statusCode}');
       return null;
     } catch (e) {
-      print('Content progress hatası: $e');
+      print('Update content progress hatası: $e');
       return null;
     }
   }

@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "TYoyo0av/Qi9hIJB9WDa/fMZv95g+Dm3NJB7oogoWq7NYNzlrpiJL/oKep0V6ZXiCNdImmFunM2f8NGdVxFXwA==",
+  "dgSpecHash": "Wyny8frlubD9Lfo+toIc47lfpr2peiUk8OctPDRzuO1cJ3LySOQ1oKYnId70PhpyA0ZyhVMqqAwrlwTwUzRqLg==",
   "success": true,
-  "projectFilePath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (1)\\surucu-main\\backend\\src\\Infrastructure\\Infrastructure.csproj",
+  "projectFilePath": "C:\\Users\\Eser Medya\\Downloads\\surucu-main (2)\\surucu-main\\backend\\src\\Infrastructure\\Infrastructure.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\Eser Medya\\.nuget\\packages\\bcrypt.net-next\\4.0.3\\bcrypt.net-next.4.0.3.nupkg.sha512",
     "C:\\Users\\Eser Medya\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\Eser Medya\\.nuget\\packages\\microsoft.aspnetcore.authentication\\2.2.0\\microsoft.aspnetcore.authentication.2.2.0.nupkg.sha512",
     "C:\\Users\\Eser Medya\\.nuget\\packages\\microsoft.aspnetcore.authentication.abstractions\\2.2.0\\microsoft.aspnetcore.authentication.abstractions.2.2.0.nupkg.sha512",

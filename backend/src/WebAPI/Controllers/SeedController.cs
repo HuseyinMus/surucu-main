@@ -4,6 +4,7 @@ using Infrastructure.Persistence;
 using Domain.Entities;
 using System.Security.Cryptography;
 using System.Text;
+using BCrypt.Net;
 
 namespace WebAPI.Controllers;
 
@@ -77,7 +78,7 @@ public class SeedController : ControllerBase
                     UserId = user.Id,
                     DrivingSchoolId = drivingSchool.Id,
                     TCNumber = user.TcNumber,
-                    BirthDate = DateTime.Now.AddYears(-20 - i),
+                    BirthDate = DateTime.UtcNow.AddYears(-20 - i),
                     LicenseType = "B",
                     RegistrationDate = DateTime.UtcNow.AddDays(-30 + i * 3),
                     CurrentStage = (StudentStage)(i % 6), // Farklı aşamalarda öğrenciler
@@ -199,8 +200,6 @@ public class SeedController : ControllerBase
 
     private string HashPassword(string password)
     {
-        using var sha256 = SHA256.Create();
-        var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-        return Convert.ToBase64String(hashedBytes);
+        return BCrypt.Net.BCrypt.HashPassword(password);
     }
 } 

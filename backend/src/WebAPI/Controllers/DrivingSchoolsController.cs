@@ -9,6 +9,7 @@ namespace WebAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+
 public class DrivingSchoolsController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -30,7 +31,8 @@ public class DrivingSchoolsController : ControllerBase
     public async Task<IActionResult> Create([FromBody] DrivingSchoolCreateRequest request)
     {
         // Sürücü kursu kaydını oluştur
-        var school = new DrivingSchool {
+        var school = new DrivingSchool
+        {
             Id = Guid.NewGuid(),
             Name = request.Name,
             Address = request.Address,
@@ -42,7 +44,8 @@ public class DrivingSchoolsController : ControllerBase
         };
         _db.DrivingSchools.Add(school);
         // Admin kullanıcı oluştur
-        var user = new User {
+        var user = new User
+        {
             Id = Guid.NewGuid(),
             FullName = school.Name + " Admin",
             Email = school.Email,
@@ -61,7 +64,6 @@ public class DrivingSchoolsController : ControllerBase
     }
 
     [HttpGet("me")]
-    [Authorize(Roles = "Admin,Instructor")] // veya sadece Admin
     public async Task<IActionResult> GetMyProfile()
     {
         var userId = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -108,7 +110,7 @@ public class DrivingSchoolsController : ControllerBase
                     taxNumber = "1234567890",
                     slogan = "Güvenli sürücüler yetiştiriyoruz",
                     description = "Türkiye'nin en güvenilir sürücü kursu",
-                    createdAt = DateTime.Now.AddYears(-5)
+                    createdAt = DateTime.UtcNow.AddYears(-5)
                 });
             }
 
@@ -163,26 +165,35 @@ public class DrivingSchoolsController : ControllerBase
         return Ok(school);
     }
 
-    [HttpPost("upload-logo")]
-    [Authorize(Roles = "Admin,Instructor")] // veya sadece Admin
-    public async Task<IActionResult> UploadLogo([FromForm] IFormFile logo)
-    {
-        if (logo == null || logo.Length == 0)
-            return BadRequest("Logo dosyası gerekli.");
-        var userId = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id.ToString() == userId);
-        if (user == null) return Unauthorized();
-        var school = await _db.DrivingSchools.FirstOrDefaultAsync(s => s.Id == user.DrivingSchoolId);
-        if (school == null) return NotFound();
-        var ext = Path.GetExtension(logo.FileName);
-        var fileName = $"logo_{school.Id}{ext}";
-        var uploadRoot = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
-        if (!Directory.Exists(uploadRoot)) Directory.CreateDirectory(uploadRoot);
-        var filePath = Path.Combine(uploadRoot, fileName);
-        using (var stream = new FileStream(filePath, FileMode.Create))
-            await logo.CopyToAsync(stream);
-        school.LogoUrl = $"/uploads/{fileName}";
-        await _db.SaveChangesAsync();
-        return Ok(new { logoUrl = school.LogoUrl });
-    }
+[HttpPost("upload-logo")]
+[Authorize(Roles = "Admin,Instructor")]
+public async Task<IActionResult> UploadLogo(UploadLogoRequest request)
+{
+    var logo = request.Logo;
+
+    if (logo == null || logo.Length == 0)
+        return BadRequest("Logo dosyası gerekli.");
+
+    var userId = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var user = await _db.Users.FirstOrDefaultAsync(u => u.Id.ToString() == userId);
+    if (user == null) return Unauthorized();
+
+    var school = await _db.DrivingSchools.FirstOrDefaultAsync(s => s.Id == user.DrivingSchoolId);
+    if (school == null) return NotFound();
+
+    var ext = Path.GetExtension(logo.FileName);
+    var fileName = $"logo_{school.Id}{ext}";
+    var uploadRoot = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+    if (!Directory.Exists(uploadRoot)) Directory.CreateDirectory(uploadRoot);
+    var filePath = Path.Combine(uploadRoot, fileName);
+    using (var stream = new FileStream(filePath, FileMode.Create))
+        await logo.CopyToAsync(stream);
+
+    school.LogoUrl = $"/uploads/{fileName}";
+    await _db.SaveChangesAsync();
+
+    return Ok(new { logoUrl = school.LogoUrl });
+}
+
+
 } 

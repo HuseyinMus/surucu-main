@@ -8,7 +8,6 @@ import {
   Bell,
   LogOut,
   User,
-  BarChart3,
   Building2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -21,8 +20,6 @@ const menu = [
   { to: "/panel/exams", label: "Sınavlar", icon: <FileText size={20} /> },
   { to: "/panel/instructors", label: "Eğitmenler", icon: <GraduationCap size={20} /> },
   { to: "/panel/notifications", label: "Bildirimler", icon: <Bell size={20} /> },
-  { to: "/panel/progress", label: "İlerleme Takibi", icon: <BarChart3 size={20} /> },
-  { to: "/panel/test", label: "Test", icon: <User size={20} /> },
   { to: "/panel/profile", label: "Profilim", icon: <User size={20} /> },
 ];
 

@@ -20,6 +20,35 @@ public class AuthController : ControllerBase
         _authService = authService;
         _db = db;
     }
+[HttpPost("forgot-password")]
+public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+{
+    try
+    {
+        var token = await _authService.GeneratePasswordResetTokenAsync(request.Email);
+        return Ok(new { message = "Şifre sıfırlama bağlantısı gönderildi", token }); // test amaçlı token döndürülüyor
+    }
+    catch (Exception ex)
+    {
+        return BadRequest(new { message = ex.Message });
+    }
+}
+
+[HttpPost("reset-password")]
+public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+{
+    try
+    {
+        var success = await _authService.ResetPasswordAsync(request);
+        return success
+            ? Ok(new { message = "Şifre güncellendi" })
+            : BadRequest(new { message = "Şifre güncellenemedi" });
+    }
+    catch (Exception ex)
+    {
+        return BadRequest(new { message = ex.Message });
+    }
+}
 
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
@@ -96,6 +125,40 @@ public class AuthController : ControllerBase
     }
 
 
+
+    [HttpPost("fix-password-hashes")]
+    public async Task<IActionResult> FixPasswordHashes()
+    {
+        try
+        {
+            var users = await _db.Users.ToListAsync();
+            int fixedCount = 0;
+
+            foreach (var user in users)
+            {
+                // Eğer hash bozuksa veya SHA256 formatındaysa, varsayılan şifre ile yeniden hash'le
+                if (string.IsNullOrEmpty(user.PasswordHash) || 
+                    !user.PasswordHash.StartsWith("$2") || // BCrypt hash'leri $2 ile başlar
+                    user.PasswordHash.Length < 10)
+                {
+                    user.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
+                    fixedCount++;
+                }
+            }
+
+            if (fixedCount > 0)
+            {
+                await _db.SaveChangesAsync();
+                return Ok(new { message = $"{fixedCount} kullanıcının şifre hash'i düzeltildi. Varsayılan şifre: 123456" });
+            }
+
+            return Ok(new { message = "Tüm hash'ler zaten doğru formatta" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Hash düzeltme hatası: {ex.Message}" });
+        }
+    }
 
     [HttpGet("profile")]
     [Authorize]
